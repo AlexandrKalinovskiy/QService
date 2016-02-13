@@ -212,10 +212,9 @@ namespace QService
                 Board = board
             };
             
-            //
             bool isSuccess;
-            var candles = connector.GetHistoricalCandles(criteria, typeof(TimeFrameCandle), TimeSpan.FromMinutes(5), from, to, out isSuccess);
-            //var candles = connector.GetHistoricalCandles(criteria, typeof(TimeFrameCandle), TimeSpan.FromMinutes(5), 100, out isSuccess);
+
+            var candles = connector.GetHistoricalCandles(criteria, typeof(TimeFrameCandle), timeFrame, from, to, out isSuccess);
 
             var list = new List<Entities.Candle>();
 
@@ -223,14 +222,13 @@ namespace QService
             {
                 var candleOpenTime = candle.OpenTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
                 var candleCloseTime = candle.OpenTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
+
                 var rcandle = new Entities.Candle
                 {
                     OpenPrice = candle.OpenPrice,
                     OpenTime = candleOpenTime,
                     HighPrice = candle.HighPrice,
-                    HighTime = candle.HighTime,
                     LowPrice = candle.ClosePrice,
-                    LowTime = candle.LowTime,
                     ClosePrice = candle.ClosePrice,
                     CloseTime = candleCloseTime,
                     Security = new Security
@@ -242,10 +240,11 @@ namespace QService
                         {
                             Code = candle.Security.Board.Code
                         }
-                    }
+                    },
+                    TotalVolume = candle.TotalVolume
                 };
 
-                if (rcandle.OpenTime.Ticks >= from.Ticks && rcandle.CloseTime.Ticks <= to.Ticks)
+                if (rcandle.OpenTime.Ticks >= from.Ticks && rcandle.OpenTime.Ticks <= to.Ticks)
                 {
                     list.Add(rcandle);
                     operationContext.GetCallbackChannel<IDataFeedCallback>().NewCandles(list);
