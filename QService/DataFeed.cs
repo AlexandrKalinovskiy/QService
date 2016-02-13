@@ -9,6 +9,7 @@ using StockSharp.Algo.Storages;
 using System.Linq;
 using QService.Entities;
 using QService.Concrete;
+using StockSharp.Algo.Candles;
 
 namespace QService
 {
@@ -197,6 +198,61 @@ namespace QService
                 return context.ExchangeBoards.ToList();
 
             return boards;
+        }
+
+        public void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame)
+        {
+            //var board = context.ExchangeBoards.FirstOrDefault(b => b.Id == security.ExchangeBoard.Id);
+            var board = new StockSharp.BusinessEntities.ExchangeBoard();
+
+            var criteria = new StockSharp.BusinessEntities.Security
+            {
+                Code = security.Ticker,
+                Id = security.Code,
+                Board = board
+            };
+            
+            //
+            bool isSuccess;
+            var candles = connector.GetHistoricalCandles(criteria, typeof(TimeFrameCandle), TimeSpan.FromMinutes(5), from, to, out isSuccess);
+            //var candles = connector.GetHistoricalCandles(criteria, typeof(TimeFrameCandle), TimeSpan.FromMinutes(5), 100, out isSuccess);
+
+            var list = new List<Entities.Candle>();
+
+            foreach (var candle in candles)
+            {
+                var candleOpenTime = candle.OpenTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
+                var candleCloseTime = candle.OpenTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
+                var rcandle = new Entities.Candle
+                {
+                    OpenPrice = candle.OpenPrice,
+                    OpenTime = candleOpenTime,
+                    HighPrice = candle.HighPrice,
+                    HighTime = candle.HighTime,
+                    LowPrice = candle.ClosePrice,
+                    LowTime = candle.LowTime,
+                    ClosePrice = candle.ClosePrice,
+                    CloseTime = candleCloseTime,
+                    Security = new Security
+                    {
+                        Ticker = candle.Security.Code,
+                        Code = candle.Security.Id,
+                        Name = candle.Security.Name,
+                        ExchangeBoard = new ExchangeBoard
+                        {
+                            Code = candle.Security.Board.Code
+                        }
+                    }
+                };
+
+                if (rcandle.OpenTime.Ticks >= from.Ticks && rcandle.CloseTime.Ticks <= to.Ticks)
+                {
+                    list.Add(rcandle);
+                    operationContext.GetCallbackChannel<IDataFeedCallback>().NewCandles(list);
+                    list.Clear();
+                }               
+            };
+           
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using QService.Entities;
+using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 
@@ -16,6 +17,9 @@ namespace QService
 
         [OperationContract(IsOneWay = true)]
         void SubscribeLevel1(string security);
+
+        [OperationContract(IsOneWay = true)]
+        void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
     }
 
     public interface IDataFeedCallback
@@ -23,10 +27,10 @@ namespace QService
         [OperationContract(IsOneWay = true)]
         void NewSecurities(IEnumerable<Security> securities);
 
-        [OperationContract]
-        void NewCandles(string candles);
-
         [OperationContract(IsOneWay = true)]
         void NewLevel1Values(decimal BestBidPrice, decimal BestAskPrice);
+
+        [OperationContract(IsOneWay = true)]
+        void NewCandles(IEnumerable<Candle> candles);
     }
 }

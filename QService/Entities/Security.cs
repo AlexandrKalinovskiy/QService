@@ -1,6 +1,4 @@
-﻿using System;
-using System.Runtime.Serialization;
-using System.ServiceModel;
+﻿using System.Runtime.Serialization;
 
 namespace QService.Entities
 {

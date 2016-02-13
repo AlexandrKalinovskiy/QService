@@ -82,6 +82,7 @@
     <Compile Include="Admin\Syncing.cs" />
     <Compile Include="Concrete\EFDbContext.cs" />
     <Compile Include="DataFeed.cs" />
+    <Compile Include="Entities\Candle.cs" />
     <Compile Include="Entities\ExchangeBoard.cs" />
     <Compile Include="Entities\Security.cs" />
     <Compile Include="IDataFeed.cs" />
