@@ -10,16 +10,18 @@ using System.Linq;
 using QService.Entities;
 using QService.Concrete;
 using StockSharp.Algo.Candles;
+using Ecng.Common;
 
 namespace QService
 {
-    //    // ПРИМЕЧАНИЕ. Команду "Переименовать" в меню "Рефакторинг" можно использовать для одновременного изменения имени класса "DataFeed" в коде и файле конфигурации.
+    // ПРИМЕЧАНИЕ. Команду "Переименовать" в меню "Рефакторинг" можно использовать для одновременного изменения имени класса "DataFeed" в коде и файле конфигурации.
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Multiple)]
     public class DataFeed : IDataFeed
     {
         private IQFeedTrader connector;
-        List<string> list = new List<string>();
         OperationContext operationContext;
         private EFDbContext context;
+        private int counter;
         
         DataFeed()
         {
@@ -185,8 +187,18 @@ namespace QService
                     }
                 });
 
-                operationContext.GetCallbackChannel<IDataFeedCallback>().NewSecurities(list);
-                list.Clear();
+                try
+                {
+                    operationContext.GetCallbackChannel<IDataFeedCallback>().NewSecurities(list);
+
+                    list.Clear();
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine("{0}", e);
+                    operationContext.Channel.Close();
+                    break;
+                }               
             }
         }
 
@@ -200,8 +212,19 @@ namespace QService
             return boards;
         }
 
+        /// <summary>
+        /// Метод возвращает исторические ссвечки с интервалом от секунды до месяца.
+        /// </summary>
+        /// <param name="security">Инструмент</param>
+        /// <param name="from">С какой даты и времени начинать закачку</param>
+        /// <param name="to">До какой даты и времени закачивать</param>
+        /// <param name="timeFrame">Таймфрем свечки</param>
         public void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame)
         {
+            Console.WriteLine("Get securities with connector {0} count {1}", connector.Id, counter++);
+            var formatFrom = new DateTime(from.Year, from.Month, from.Day + 1, 9, 30, 00);
+            var formatTo = new DateTime(to.Year, to.Month, to.Day, 16, 00, 0) - timeFrame;
+
             //var board = context.ExchangeBoards.FirstOrDefault(b => b.Id == security.ExchangeBoard.Id);
             var board = new StockSharp.BusinessEntities.ExchangeBoard();
 
@@ -211,26 +234,25 @@ namespace QService
                 Id = security.Code,
                 Board = board
             };
-            
-            bool isSuccess;
 
-            var candles = connector.GetHistoricalCandles(criteria, typeof(TimeFrameCandle), timeFrame, from, to, out isSuccess);
+            bool isSuccess;
+            var candles = connector.GetHistoricalCandles(criteria, typeof(TimeFrameCandle), timeFrame, formatFrom, to, out isSuccess);
 
             var list = new List<Entities.Candle>();
 
             foreach (var candle in candles)
             {
                 var candleOpenTime = candle.OpenTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
-                var candleCloseTime = candle.OpenTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
+                var candleCloseTime = candle.CloseTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
 
                 var rcandle = new Entities.Candle
                 {
                     OpenPrice = candle.OpenPrice,
-                    OpenTime = candleOpenTime,
+                    OpenTime = candle.OpenTime,
                     HighPrice = candle.HighPrice,
                     LowPrice = candle.ClosePrice,
                     ClosePrice = candle.ClosePrice,
-                    CloseTime = candleCloseTime,
+                    CloseTime = candle.CloseTime,
                     Security = new Security
                     {
                         Ticker = candle.Security.Code,
@@ -244,14 +266,69 @@ namespace QService
                     TotalVolume = candle.TotalVolume
                 };
 
-                if (rcandle.OpenTime.Ticks >= from.Ticks && rcandle.OpenTime.Ticks <= to.Ticks)
-                {
-                    list.Add(rcandle);
-                    operationContext.GetCallbackChannel<IDataFeedCallback>().NewCandles(list);
-                    list.Clear();
-                }               
+                //if (candleOpenTime.Ticks >= formatFrom.Ticks &&  candleOpenTime.Ticks <= formatTo.Ticks)
+                //{
+                list.Add(rcandle);
+                operationContext.GetCallbackChannel<IDataFeedCallback>().NewCandles(list);
+                list.Clear();
+                //}
             };
-           
         }
+
+        //public IEnumerable<Entities.Candle> GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame)
+        //{
+        //    var formatFrom = new DateTime(from.Year, from.Month, from.Day + 1, 9, 30, 00);
+        //    var formatTo = new DateTime(to.Year, to.Month, to.Day, 16, 00, 0) - timeFrame;
+
+        //    //var board = context.ExchangeBoards.FirstOrDefault(b => b.Id == security.ExchangeBoard.Id);
+        //    var board = new StockSharp.BusinessEntities.ExchangeBoard();
+
+        //    var criteria = new StockSharp.BusinessEntities.Security
+        //    {
+        //        Code = security.Ticker,
+        //        Id = security.Code,
+        //        Board = board
+        //    };
+
+        //    bool isSuccess;
+        //    var candles = connector.GetHistoricalCandles(criteria, typeof(TimeFrameCandle), timeFrame, formatFrom, to, out isSuccess);
+
+        //    var list = new List<Entities.Candle>();
+
+        //    foreach (var candle in candles)
+        //    {
+        //        var candleOpenTime = candle.OpenTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
+        //        var candleCloseTime = candle.CloseTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
+
+        //        var rcandle = new Entities.Candle
+        //        {
+        //            OpenPrice = candle.OpenPrice,
+        //            OpenTime = candle.OpenTime,
+        //            HighPrice = candle.HighPrice,
+        //            LowPrice = candle.ClosePrice,
+        //            ClosePrice = candle.ClosePrice,
+        //            CloseTime = candle.CloseTime,
+        //            Security = new Security
+        //            {
+        //                Ticker = candle.Security.Code,
+        //                Code = candle.Security.Id,
+        //                Name = candle.Security.Name,
+        //                ExchangeBoard = new ExchangeBoard
+        //                {
+        //                    Code = candle.Security.Board.Code
+        //                }
+        //            },
+        //            TotalVolume = candle.TotalVolume
+        //        };
+
+        //        //if (candleOpenTime.Ticks >= formatFrom.Ticks &&  candleOpenTime.Ticks <= formatTo.Ticks)
+        //        //{
+        //        list.Add(rcandle);
+        //        operationContext.GetCallbackChannel<IDataFeedCallback>().NewCandles(list);
+        //        //}
+        //    };
+
+        //    return list;
+        //}
     }
 }

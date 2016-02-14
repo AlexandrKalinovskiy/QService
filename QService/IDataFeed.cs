@@ -15,11 +15,14 @@ namespace QService
         [OperationContract]
         List<ExchangeBoard> GetExchangeBoards(string code);
 
-        [OperationContract(IsOneWay = true)]
+        [OperationContract]
         void SubscribeLevel1(string security);
 
         [OperationContract(IsOneWay = true)]
         void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
+
+        //[OperationContract]
+        //IEnumerable<Candle> GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
     }
 
     public interface IDataFeedCallback
