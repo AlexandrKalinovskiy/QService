@@ -15,14 +15,14 @@ using Ecng.Common;
 namespace QService
 {
     // ПРИМЕЧАНИЕ. Команду "Переименовать" в меню "Рефакторинг" можно использовать для одновременного изменения имени класса "DataFeed" в коде и файле конфигурации.
-    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Multiple)]
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Reentrant)]
     public class DataFeed : IDataFeed
     {
         private IQFeedTrader connector;
         OperationContext operationContext;
         private EFDbContext context;
-        private int counter;
-        
+        private const int portionSize = 10;
+
         DataFeed()
         {
             context = new EFDbContext();
@@ -38,7 +38,7 @@ namespace QService
 
             Thread.Sleep(500);
 
-            Console.WriteLine("IQFeed connection state: {0} {1} ", connector.ConnectionState, connector.Id);
+            Console.WriteLine("SID: {0}", operationContext.Channel.SessionId);
 
         }
 
@@ -113,6 +113,8 @@ namespace QService
         //    //Выполнить преобразование в "чистую" модель данных, в случае если найдены бумаги по указанным критериям
         //    var list = new List<Security>();
 
+        //    int count = 0;
+
         //    foreach (var security in securities)
         //    {
         //        list.Add(new Security
@@ -131,9 +133,13 @@ namespace QService
         //            }
         //        });
 
-        //        operationContext.GetCallbackChannel<IDataFeedCallback>().NewSecurities(list);
-        //        list.Clear();
-        //    }         
+        //        count++;
+
+        //        if(count > 600)
+        //        {
+        //            return list;
+        //        }
+        //    }
 
         //    return list;
         //}
@@ -193,12 +199,12 @@ namespace QService
 
                     list.Clear();
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     Console.WriteLine("{0}", e);
                     operationContext.Channel.Close();
                     break;
-                }               
+                }
             }
         }
 
@@ -221,7 +227,6 @@ namespace QService
         /// <param name="timeFrame">Таймфрем свечки</param>
         public void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame)
         {
-            Console.WriteLine("Get securities with connector {0} count {1}", connector.Id, counter++);
             var formatFrom = new DateTime(from.Year, from.Month, from.Day + 1, 9, 30, 00);
             var formatTo = new DateTime(to.Year, to.Month, to.Day, 16, 00, 0) - timeFrame;
 
@@ -266,13 +271,39 @@ namespace QService
                     TotalVolume = candle.TotalVolume
                 };
 
-                //if (candleOpenTime.Ticks >= formatFrom.Ticks &&  candleOpenTime.Ticks <= formatTo.Ticks)
-                //{
                 list.Add(rcandle);
-                operationContext.GetCallbackChannel<IDataFeedCallback>().NewCandles(list);
-                list.Clear();
+
+                //if (list.Count == portionSize)
+                //{
+                //    try
+                //    {
+                //        operationContext.GetCallbackChannel<IDataFeedCallback>().NewCandles(list);
+                //        Console.WriteLine("Send candles");
+                //        list.Clear();
+                //    }
+                //    catch (Exception e)
+                //    {
+                //        Console.WriteLine(e);
+                //        operationContext.Channel.Close();
+                //        break;
+                //    }
                 //}
             };
+
+            if (list.Count > 0)
+            {
+                try
+                {
+                    operationContext.GetCallbackChannel<IDataFeedCallback>().NewCandles(list);
+                    Console.WriteLine("Send candles, connection state: {0}", connector.ConnectionState);
+                    list.Clear();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    operationContext.Channel.Close();
+                }
+            }
         }
 
         //public IEnumerable<Entities.Candle> GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame)
