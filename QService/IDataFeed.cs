@@ -16,7 +16,7 @@ namespace QService
         List<ExchangeBoard> GetExchangeBoards(string code);
 
         [OperationContract]
-        void SubscribeLevel1(string security);
+        void SubscribeLevel1(Security security);
 
         [OperationContract(IsOneWay = true)]
         void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
@@ -33,7 +33,10 @@ namespace QService
         [OperationContract(IsOneWay = true)]
         void NewLevel1Values(decimal BestBidPrice, decimal BestAskPrice);
 
+        //[OperationContract(IsOneWay = true)]
+        //void NewCandles(IEnumerable<Candle> candles);
+
         [OperationContract(IsOneWay = true)]
-        void NewCandles(IEnumerable<Candle> candles);
+        void NewCandles(Candle candle);
     }
 }
