@@ -94,6 +94,7 @@
     <Compile Include="Entities\ExchangeBoard.cs" />
     <Compile Include="Entities\Security.cs" />
     <Compile Include="IDataFeed.cs" />
+    <Compile Include="Listener.cs" />
     <Compile Include="Migrations\201602111721167_InitialCreate.cs" />
     <Compile Include="Migrations\201602111721167_InitialCreate.Designer.cs">
       <DependentUpon>201602111721167_InitialCreate.cs</DependentUpon>

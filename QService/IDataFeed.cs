@@ -38,5 +38,8 @@ namespace QService
 
         [OperationContract(IsOneWay = true)]
         void NewCandles(Candle candle);
+
+        [OperationContract(IsOneWay = true)]
+        void NewCandlesFinished(Candle candle);
     }
 }

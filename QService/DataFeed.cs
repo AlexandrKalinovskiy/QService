@@ -11,25 +11,24 @@ using QService.Entities;
 using QService.Concrete;
 using StockSharp.Algo.Candles;
 using Ecng.Common;
-
+using System.ComponentModel;
 
 namespace QService
 {
     // ПРИМЕЧАНИЕ. Команду "Переименовать" в меню "Рефакторинг" можно использовать для одновременного изменения имени класса "DataFeed" в коде и файле конфигурации.
-    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Reentrant)]
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Multiple)]
     public class DataFeed : IDataFeed
     {
         private IQFeedTrader connector;
         OperationContext operationContext;
         private EFDbContext context;
-        private const int portionSize = 10;
-        private int requestsCount;
         private List<Entities.Candle> candlesTest;
         private CandleManager candleManager;
+        private Thread listenerThtread;
+        private Listener listener;
 
         DataFeed()
         {
-            requestsCount = 0;
             candlesTest = new List<Entities.Candle>();
             context = new EFDbContext();
             //context.Configuration.ProxyCreationEnabled = false;
@@ -40,14 +39,21 @@ namespace QService
             connector = new IQFeedTrader();
             //connector.ValuesChanged += Connector_Level1Changed;
             candleManager = new CandleManager(connector);
+
             connector.Connect();
 
      
             candleManager.Processing += CandleManager_Processing;
+            candleManager.Stopped += CandleManager_Stopped;
 
             Thread.Sleep(500);
 
             Console.WriteLine("SID: {0}", operationContext.Channel.SessionId);
+
+            listener = new Listener();
+
+            listenerThtread = new Thread(listener.Start);
+            listenerThtread.Start();
         }
 
         private void Channel_Closed(object sender, EventArgs e)
@@ -192,14 +198,17 @@ namespace QService
                 Board = board
             };
 
-            var series = new CandleSeries(typeof(TimeFrameCandle), criteria, timeFrame);
-            candleManager.Start(series);
+            var series = new CandleSeries(typeof(TimeFrameCandle), criteria, timeFrame)
+            {
+                From = from,
+                To = to
+            };
 
-            Console.WriteLine("Start {0}", security.Ticker);
+            listener.getCandlesQueue.Enqueue(series);
+            Console.WriteLine("Add series");
 
-            //series.GetCandles<TimeFrameCandle>(20);
+            //candleManager.Start(series);
 
-            //Console.WriteLine("{0}", candleManager.Series.Count);      
 
             //bool isSuccess;
             //var candles = connector.GetHistoricalCandles(criteria, typeof(TimeFrameCandle), timeFrame, formatFrom, to, out isSuccess);
@@ -283,67 +292,21 @@ namespace QService
             {
                 Console.WriteLine("{0}", candlesCount++);
                 Callback.NewCandles(rcandle);
+                if(candle.CloseTime.Ticks >= series.To.Ticks)
+                {
+                    candleManager.Stop(series);                    
+                }
             }
             sendCandle = rcandle.OpenTime;           
         }
 
+        private void CandleManager_Stopped(CandleSeries series)
+        {
+            Console.WriteLine("Candle manager stop {0}", candleManager.Series.Count());
+            candleManager.Stop(series);
+            series.Dispose();
+        }      
 
-        //public IEnumerable<Entities.Candle> GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame)
-        //{
-        //    var formatFrom = new DateTime(from.Year, from.Month, from.Day + 1, 9, 30, 00);
-        //    var formatTo = new DateTime(to.Year, to.Month, to.Day, 16, 00, 0) - timeFrame;
-
-        //    //var board = context.ExchangeBoards.FirstOrDefault(b => b.Id == security.ExchangeBoard.Id);
-        //    var board = new StockSharp.BusinessEntities.ExchangeBoard();
-
-        //    var criteria = new StockSharp.BusinessEntities.Security
-        //    {
-        //        Code = security.Ticker,
-        //        Id = security.Code,
-        //        Board = board
-        //    };
-
-        //    bool isSuccess;
-        //    var candles = connector.GetHistoricalCandles(criteria, typeof(TimeFrameCandle), timeFrame, formatFrom, to, out isSuccess);
-
-        //    var list = new List<Entities.Candle>();
-
-        //    foreach (var candle in candles)
-        //    {
-        //        var candleOpenTime = candle.OpenTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
-        //        var candleCloseTime = candle.CloseTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
-
-        //        var rcandle = new Entities.Candle
-        //        {
-        //            OpenPrice = candle.OpenPrice,
-        //            OpenTime = candle.OpenTime,
-        //            HighPrice = candle.HighPrice,
-        //            LowPrice = candle.ClosePrice,
-        //            ClosePrice = candle.ClosePrice,
-        //            CloseTime = candle.CloseTime,
-        //            Security = new Security
-        //            {
-        //                Ticker = candle.Security.Code,
-        //                Code = candle.Security.Id,
-        //                Name = candle.Security.Name,
-        //                ExchangeBoard = new ExchangeBoard
-        //                {
-        //                    Code = candle.Security.Board.Code
-        //                }
-        //            },
-        //            TotalVolume = candle.TotalVolume
-        //        };
-
-        //        //if (candleOpenTime.Ticks >= formatFrom.Ticks &&  candleOpenTime.Ticks <= formatTo.Ticks)
-        //        //{
-        //        list.Add(rcandle);
-        //        //operationContext.GetCallbackChannel<IDataFeedCallback>().NewCandles(list);
-        //        //}
-        //    };
-
-        //    Console.WriteLine("Send candles from SID: {0}", operationContext.Channel.SessionId);
-        //    return list;
-        //}
 
         IDataFeedCallback Callback
         {
