@@ -33,13 +33,7 @@ namespace QService
         [OperationContract(IsOneWay = true)]
         void NewLevel1Values(decimal BestBidPrice, decimal BestAskPrice);
 
-        //[OperationContract(IsOneWay = true)]
-        //void NewCandles(IEnumerable<Candle> candles);
-
         [OperationContract(IsOneWay = true)]
         void NewCandles(Candle candle);
-
-        [OperationContract(IsOneWay = true)]
-        void NewCandlesFinished(Candle candle);
     }
 }

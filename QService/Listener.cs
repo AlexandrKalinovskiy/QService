@@ -1,6 +1,9 @@
-﻿using StockSharp.Algo.Candles;
+﻿using QService.Entities;
+using StockSharp.Algo.Candles;
+using StockSharp.IQFeed;
 using System;
 using System.Collections.Generic;
+using System.ServiceModel;
 using System.Threading;
 
 namespace QService
@@ -11,30 +14,73 @@ namespace QService
     /// </summary>
     public class Listener
     {
-        public Queue<CandleSeries> getCandlesQueue;
+        public Queue<RequestCandles> requestCandlesQueue;
+        public IQFeedTrader connector;
 
-        public Listener()
+        private OperationContext operationContext;
+
+        public Listener(IQFeedTrader connector, OperationContext operationContext)
         {
-            getCandlesQueue = new Queue<CandleSeries>();
+            this.connector = connector;
+            this.operationContext = operationContext;
+            requestCandlesQueue = new Queue<RequestCandles>();
         }
 
         public void Start()
         {
+            bool isSuccess;
+
             while (true)    //Постоянно следим за очередью запросов
             {
-                Thread.Sleep(200);
-                try
-                {
-                    var series = getCandlesQueue.Dequeue();
-                    if (series != null)
+                Thread.Sleep(50);
+                if (operationContext.Channel.State == CommunicationState.Opened && requestCandlesQueue.Count > 0)   //Выполнять код будем если только очередь не пуста и канал связи с клиентом в порядке
+                {                    
+                    try
                     {
-                        Console.WriteLine("Следим за очередью");
+                        var request = requestCandlesQueue.Dequeue();    //Запросы выполняются в порядке очереди
+                        var candles = connector.GetHistoricalCandles(request.Security, request.Type, request.TimeFrame, request.From, request.To, out isSuccess);
+
+                        if (candles != null)
+                        {
+                            foreach (var candle in candles)
+                            {
+                                var rcandle = new Entities.Candle
+                                {
+                                    OpenPrice = candle.OpenPrice,
+                                    OpenTime = candle.OpenTime,
+                                    HighPrice = candle.HighPrice,
+                                    LowPrice = candle.ClosePrice,
+                                    ClosePrice = candle.ClosePrice,
+                                    CloseTime = candle.CloseTime,
+                                    Security = new Security
+                                    {
+                                        Ticker = candle.Security.Code,
+                                        Code = candle.Security.Id,
+                                        Name = candle.Security.Name,
+                                        ExchangeBoard = new ExchangeBoard
+                                        {
+                                            Code = candle.Security.Board.Code
+                                        }
+                                    },
+                                    TotalVolume = candle.TotalVolume
+                                };
+                                Callback.NewCandles(rcandle);
+                            }
+                        }
+                    }
+                    catch
+                    {
+
                     }
                 }
-                catch
-                {
+            }
+        }
 
-                }
+        IDataFeedCallback Callback
+        {
+            get
+            {
+                return operationContext.GetCallbackChannel<IDataFeedCallback>();
             }
         }
     }

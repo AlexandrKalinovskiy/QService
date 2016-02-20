@@ -92,6 +92,7 @@
     <Compile Include="DataFeed.cs" />
     <Compile Include="Entities\Candle.cs" />
     <Compile Include="Entities\ExchangeBoard.cs" />
+    <Compile Include="Entities\RequestCandles.cs" />
     <Compile Include="Entities\Security.cs" />
     <Compile Include="IDataFeed.cs" />
     <Compile Include="Listener.cs" />

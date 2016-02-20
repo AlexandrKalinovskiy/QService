@@ -20,16 +20,14 @@ namespace QService
     public class DataFeed : IDataFeed
     {
         private IQFeedTrader connector;
-        OperationContext operationContext;
+        public OperationContext operationContext;
         private EFDbContext context;
         private List<Entities.Candle> candlesTest;
-        private CandleManager candleManager;
         private Thread listenerThtread;
         private Listener listener;
 
         DataFeed()
         {
-            candlesTest = new List<Entities.Candle>();
             context = new EFDbContext();
             //context.Configuration.ProxyCreationEnabled = false;
 
@@ -38,22 +36,17 @@ namespace QService
 
             connector = new IQFeedTrader();
             //connector.ValuesChanged += Connector_Level1Changed;
-            candleManager = new CandleManager(connector);
-
-            connector.Connect();
-
-     
-            candleManager.Processing += CandleManager_Processing;
-            candleManager.Stopped += CandleManager_Stopped;
-
+ 
             Thread.Sleep(500);
 
             Console.WriteLine("SID: {0}", operationContext.Channel.SessionId);
 
-            listener = new Listener();
+            listener = new Listener(connector, operationContext);
 
             listenerThtread = new Thread(listener.Start);
             listenerThtread.Start();
+
+            connector.Connect();
         }
 
         private void Channel_Closed(object sender, EventArgs e)
@@ -66,38 +59,37 @@ namespace QService
             Console.WriteLine("Destroy {0}", connector.Id);
         }
 
-        //private void Connector_Level1Changed(Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
-        //{            
-        //    foreach(var change in changes)
-        //    {
-        //        if (change.Key == StockSharp.Messages.Level1Fields.BestAskPrice || change.Key == StockSharp.Messages.Level1Fields.BestBidPrice)
-        //        {
-        //            //Console.WriteLine("{0} change {1} connector {2}", security.Code, change.Value, connector.Id);
-        //            try
-        //            {
-        //                operationContext.GetCallbackChannel<IDataFeedCallback>().NewLevel1Values((decimal)change.Value, (decimal)change.Value);
-        //            }
-        //            catch
-        //            {
-        //                connector.UnRegisterSecurity(security);
-        //                operationContext.Channel.Close();
-        //            }                   
-        //        }
-        //    }
-        //}
+        private void Connector_Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
+        {
+            foreach (var change in changes)
+            {
+                if (change.Key == StockSharp.Messages.Level1Fields.BestAskPrice || change.Key == StockSharp.Messages.Level1Fields.BestBidPrice)
+                {
+                    //Console.WriteLine("{0} change {1} connector {2}", security.Code, change.Value, connector.Id);
+                    try
+                    {
+                        operationContext.GetCallbackChannel<IDataFeedCallback>().NewLevel1Values((decimal)change.Value, (decimal)change.Value);
+                    }
+                    catch
+                    {
+                        connector.UnRegisterSecurity(security);
+                        operationContext.Channel.Close();
+                    }
+                }
+            }
+        }
 
         public void SubscribeLevel1(Security security)
         {
-            //operationContext = OperationContext.Current;
+            operationContext = OperationContext.Current;
 
-            //Console.WriteLine("IQFeed connection state: {0} ", connector.ConnectionState);
+            var criteria = new StockSharp.BusinessEntities.Security()
+            {
+                Code = security.Ticker,
+                Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
+            };
 
-            //var criteria = new Security()
-            //{
-            //    Code = security,
-            //    Board = ExchangeBoard.Nyse
-            //};
-            //connector.RegisterSecurity(criteria);
+            connector.RegisterSecurity(criteria);
         }
 
         public void GetSecurities(string ticker, string exchangeBoardCode)
@@ -198,114 +190,17 @@ namespace QService
                 Board = board
             };
 
-            var series = new CandleSeries(typeof(TimeFrameCandle), criteria, timeFrame)
+            var requestCandlies = new RequestCandles
             {
+                Security = criteria,
+                Type = typeof(TimeFrameCandle),
                 From = from,
-                To = to
+                To = to,
+                TimeFrame = timeFrame
             };
 
-            listener.getCandlesQueue.Enqueue(series);
-            Console.WriteLine("Add series");
-
-            //candleManager.Start(series);
-
-
-            //bool isSuccess;
-            //var candles = connector.GetHistoricalCandles(criteria, typeof(TimeFrameCandle), timeFrame, formatFrom, to, out isSuccess);
-
-            //var list = new List<Entities.Candle>();
-
-            //foreach (var candle in candles)
-            //{
-            //    var candleOpenTime = candle.OpenTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
-            //    var candleCloseTime = candle.CloseTime - TimeSpan.FromHours(5);   //Разница UTC и NY 5 часов
-
-            //    var rcandle = new Entities.Candle
-            //    {
-            //        OpenPrice = candle.OpenPrice,
-            //        OpenTime = candle.OpenTime,
-            //        HighPrice = candle.HighPrice,
-            //        LowPrice = candle.ClosePrice,
-            //        ClosePrice = candle.ClosePrice,
-            //        CloseTime = candle.CloseTime,
-            //        Security = new Security
-            //        {
-            //            Ticker = candle.Security.Code,
-            //            Code = candle.Security.Id,
-            //            Name = candle.Security.Name,
-            //            ExchangeBoard = new ExchangeBoard
-            //            {
-            //                Code = candle.Security.Board.Code
-            //            }
-            //        },
-            //        TotalVolume = candle.TotalVolume
-            //    };
-
-            //    list.Add(rcandle);
-            //};
-
-            //if (list.Count > 0)
-            //{
-            //    try
-            //    {
-            //        Callback.NewCandles(list);
-            //        ////SendResult(list);
-            //        //asyncResult = func.BeginInvoke(list, null, null);
-            //        list.Clear();
-            //    }
-            //    catch (Exception e)
-            //    {
-            //        Console.WriteLine(e);
-            //        //operationContext.Channel.Close();
-            //    }
-            //}
-            //connector.Disconnect();
-        }
-
-        int candlesCount = 0;
-        DateTimeOffset sendCandle;
-
-        private void CandleManager_Processing(CandleSeries series, StockSharp.Algo.Candles.Candle candle)
-        {
-            var rcandle = new Entities.Candle
-            {
-                OpenPrice = candle.OpenPrice,
-                OpenTime = candle.OpenTime,
-                HighPrice = candle.HighPrice,
-                LowPrice = candle.ClosePrice,
-                ClosePrice = candle.ClosePrice,
-                CloseTime = candle.CloseTime,
-                Security = new Security
-                {
-                    Ticker = candle.Security.Code,
-                    Code = candle.Security.Id,
-                    Name = candle.Security.Name,
-                    ExchangeBoard = new ExchangeBoard
-                    {
-                        Code = candle.Security.Board.Code
-                    }
-                },
-                TotalVolume = candle.TotalVolume
-            };
-
-            if (rcandle.OpenTime.Ticks != sendCandle.Ticks)
-            {
-                Console.WriteLine("{0}", candlesCount++);
-                Callback.NewCandles(rcandle);
-                if(candle.CloseTime.Ticks >= series.To.Ticks)
-                {
-                    candleManager.Stop(series);                    
-                }
-            }
-            sendCandle = rcandle.OpenTime;           
-        }
-
-        private void CandleManager_Stopped(CandleSeries series)
-        {
-            Console.WriteLine("Candle manager stop {0}", candleManager.Series.Count());
-            candleManager.Stop(series);
-            series.Dispose();
-        }      
+            listener.requestCandlesQueue.Enqueue(requestCandlies);
+        }    
 
 
         IDataFeedCallback Callback
