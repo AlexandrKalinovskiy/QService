@@ -1,5 +1,5 @@
 ﻿using QService.Entities;
-using StockSharp.Algo.Candles;
+using System.Linq;
 using StockSharp.IQFeed;
 using System;
 using System.Collections.Generic;
@@ -40,7 +40,7 @@ namespace QService
                         var request = requestCandlesQueue.Dequeue();    //Запросы выполняются в порядке очереди
                         var candles = connector.GetHistoricalCandles(request.Security, request.Type, request.TimeFrame, request.From, request.To, out isSuccess);
 
-                        if (candles != null)
+                        if (candles != null && candles.Count() > 0)
                         {
                             foreach (var candle in candles)
                             {

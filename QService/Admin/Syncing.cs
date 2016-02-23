@@ -17,6 +17,8 @@ namespace QService.Admin
         private EFDbContext context;
         private IQFeedTrader connector;
 
+        private int addedCount;
+
         public Syncing()
         {
             context = new EFDbContext();
@@ -24,14 +26,17 @@ namespace QService.Admin
             connector = new IQFeedTrader();
             connector.Connect();
 
-            Thread.Sleep(500);
+            addedCount = 0;
 
-            Console.WriteLine("Sonnection state {0}", connector.ConnectionState);
+            Thread.Sleep(1000);
+
+            Console.WriteLine("Connection state {0}", connector.ConnectionState);
         }
 
         public int SyncSecurities()
         {
             connector.NewSecurities += Connector_NewSecurities;
+            connector.LookupSecuritiesResult += Connector_LookupSecuritiesResult;
 
             var criteria = new StockSharp.BusinessEntities.Security
             {
@@ -41,6 +46,11 @@ namespace QService.Admin
             connector.LookupSecurities(criteria);
 
             return 0;
+        }
+
+        private void Connector_LookupSecuritiesResult(IEnumerable<StockSharp.BusinessEntities.Security> securities)
+        {
+            Console.WriteLine("Добавлено {0} инструмент(ов)", securities.Count());
         }
 
         private void Connector_NewSecurities(IEnumerable<StockSharp.BusinessEntities.Security> securities)

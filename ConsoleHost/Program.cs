@@ -13,13 +13,19 @@ namespace ConsoleHost
         {
             using (var host = new ServiceHost(typeof(QService.DataFeed)))
             {
-                host.Open();
-                Console.WriteLine("Server started...");
+                try {
+                    host.Open();
+                    Console.WriteLine("Server started...");
 
-                Syncing syncing = new Syncing();
-                //syncing.SyncSecurities();
+                    //Syncing syncing = new Syncing();
+                    //syncing.SyncSecurities();
 
-                Console.ReadKey();
+                    Console.ReadKey();
+                }
+                finally
+                {
+                    host.Close();
+                }
             }
             //using (var db = new EFDbContext())
             //{

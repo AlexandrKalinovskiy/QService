@@ -20,9 +20,6 @@ namespace QService
 
         [OperationContract(IsOneWay = true)]
         void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
-
-        //[OperationContract]
-        //IEnumerable<Candle> GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
     }
 
     public interface IDataFeedCallback

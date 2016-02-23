@@ -22,21 +22,19 @@ namespace QService
         private IQFeedTrader connector;
         public OperationContext operationContext;
         private EFDbContext context;
-        private List<Entities.Candle> candlesTest;
         private Thread listenerThtread;
         private Listener listener;
 
         DataFeed()
         {
             context = new EFDbContext();
-            //context.Configuration.ProxyCreationEnabled = false;
 
             operationContext = OperationContext.Current;
             operationContext.Channel.Closed += Channel_Closed;
 
             connector = new IQFeedTrader();
-            //connector.ValuesChanged += Connector_Level1Changed;
- 
+            connector.ValuesChanged += Connector_Level1Changed;
+
             Thread.Sleep(500);
 
             Console.WriteLine("SID: {0}", operationContext.Channel.SessionId);
@@ -68,7 +66,7 @@ namespace QService
                     //Console.WriteLine("{0} change {1} connector {2}", security.Code, change.Value, connector.Id);
                     try
                     {
-                        operationContext.GetCallbackChannel<IDataFeedCallback>().NewLevel1Values((decimal)change.Value, (decimal)change.Value);
+                        Callback.NewLevel1Values((decimal)change.Value, (decimal)change.Value);
                     }
                     catch
                     {
@@ -101,7 +99,7 @@ namespace QService
                 securities = context.Securities.Where(s => s.Ticker == ticker).ToList();
 
                 if (securities.Count == 0)
-                    operationContext.GetCallbackChannel<IDataFeedCallback>().NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящей бумаги
+                    Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящей бумаги
             }
             else if (exchangeBoardCode != null && exchangeBoardCode != string.Empty)
             {
@@ -112,17 +110,16 @@ namespace QService
                     securities = context.Securities.Where(s => s.ExchangeBoard.Id == exchangeBoard.Id).ToList();
 
                     if (securities.Count == 0)
-                        operationContext.GetCallbackChannel<IDataFeedCallback>().NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
+                        Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
                 }
                 else
                 {
-                    operationContext.GetCallbackChannel<IDataFeedCallback>().NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
+                    Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
                 }
             }
 
             //Выполнить преобразование в "чистую" модель данных, в случае если найдены бумаги по указанным критериям
             var list = new List<Security>();
-            int i = 0;
 
             foreach (var security in securities)
             {
@@ -146,7 +143,6 @@ namespace QService
                 {
                     Callback.NewSecurities(list);
                     list.Clear();
-                    i = 0;
                 }
                 catch (Exception e)
                 {
@@ -168,7 +164,7 @@ namespace QService
         }
 
         /// <summary>
-        /// Метод возвращает исторические ссвечки с интервалом от секунды до месяца.
+        /// Метод возвращает исторические свечки с интервалом от секунды до месяца.
         /// </summary>
         /// <param name="security">Инструмент</param>
         /// <param name="from">С какой даты и времени начинать закачку</param>
@@ -176,7 +172,6 @@ namespace QService
         /// <param name="timeFrame">Таймфрем свечки</param>
         public void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame)
         {
-            //Console.WriteLine("Requests count: {0} threadId: {1}", requestsCount++, Thread.CurrentThread.ManagedThreadId);
             //var formatFrom = new DateTime(from.Year, from.Month, from.Day + 1, 9, 30, 00);
             //var formatTo = new DateTime(to.Year, to.Month, to.Day, 16, 00, 0) - timeFrame;
 
@@ -200,8 +195,7 @@ namespace QService
             };
 
             listener.requestCandlesQueue.Enqueue(requestCandlies);
-        }    
-
+        }
 
         IDataFeedCallback Callback
         {
