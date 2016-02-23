@@ -25,6 +25,8 @@ namespace QService
         private Thread listenerThtread;
         private Listener listener;
 
+        private StockSharp.BusinessEntities.Security testSecurity;
+
         DataFeed()
         {
             context = new EFDbContext();
@@ -45,6 +47,13 @@ namespace QService
             listenerThtread.Start();
 
             connector.Connect();
+
+            testSecurity = new StockSharp.BusinessEntities.Security()
+            {
+                Code = "A",
+                Id = "A@NYSE",
+                Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
+            };
         }
 
         private void Channel_Closed(object sender, EventArgs e)
@@ -74,7 +83,8 @@ namespace QService
                         operationContext.Channel.Close();
                     }
                 }
-            }
+            };
+            Console.WriteLine("Level1");
         }
 
         public void SubscribeLevel1(Security security)
@@ -84,6 +94,7 @@ namespace QService
             var criteria = new StockSharp.BusinessEntities.Security()
             {
                 Code = security.Ticker,
+                Id = security.Code,
                 Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
             };
 
@@ -92,6 +103,9 @@ namespace QService
 
         public void GetSecurities(string ticker, string exchangeBoardCode)
         {
+            connector.RegisterSecurity(testSecurity);
+            Console.WriteLine("RegisterSecurity");
+
             var securities = new List<Security>();
 
             if (ticker != null && ticker != string.Empty)   //Если указан тикер бумаги
@@ -147,7 +161,7 @@ namespace QService
                 catch (Exception e)
                 {
                     Console.WriteLine("{0}", e);
-                    operationContext.Channel.Close();
+                    //operationContext.Channel.Close();
                     break;
                 }
             };

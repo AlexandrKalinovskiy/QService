@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 using System.Threading;
+using System.Collections;
 
 namespace QService
 {
@@ -29,10 +30,11 @@ namespace QService
         public void Start()
         {
             bool isSuccess;
+            List<Candle> candlesStake = new List<Candle>();
 
             while (true)    //Постоянно следим за очередью запросов
             {
-                Thread.Sleep(50);
+                Thread.Sleep(10);
                 if (operationContext.Channel.State == CommunicationState.Opened && requestCandlesQueue.Count > 0)   //Выполнять код будем если только очередь не пуста и канал связи с клиентом в порядке
                 {                    
                     try
@@ -64,8 +66,10 @@ namespace QService
                                     },
                                     TotalVolume = candle.TotalVolume
                                 };
-                                Callback.NewCandles(rcandle);
-                            }
+                                candlesStake.Add(rcandle);
+                            };
+                            Callback.NewCandles(candlesStake);
+                            candlesStake.Clear();
                         }
                     }
                     catch

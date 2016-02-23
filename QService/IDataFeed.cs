@@ -31,6 +31,6 @@ namespace QService
         void NewLevel1Values(decimal BestBidPrice, decimal BestAskPrice);
 
         [OperationContract(IsOneWay = true)]
-        void NewCandles(Candle candle);
+        void NewCandles(IEnumerable<Candle> candles);
     }
 }
