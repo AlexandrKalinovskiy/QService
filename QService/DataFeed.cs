@@ -16,7 +16,7 @@ using System.ComponentModel;
 namespace QService
 {
     // ПРИМЕЧАНИЕ. Команду "Переименовать" в меню "Рефакторинг" можно использовать для одновременного изменения имени класса "DataFeed" в коде и файле конфигурации.
-    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Multiple)]
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Reentrant)]
     public class DataFeed : IDataFeed
     {
         private IQFeedTrader connector;
@@ -24,6 +24,7 @@ namespace QService
         private EFDbContext context;
         private Thread listenerThtread;
         private Listener listener;
+        private const int stakeSize = 500;
 
         private StockSharp.BusinessEntities.Security testSecurity;
 
@@ -40,10 +41,10 @@ namespace QService
 
             Console.WriteLine("SID: {0}", operationContext.Channel.SessionId);
 
-            //listener = new Listener(connector, operationContext);
+            listener = new Listener(connector, operationContext);
 
-            //listenerThtread = new Thread(listener.Start);
-            //listenerThtread.Start();
+            listenerThtread = new Thread(listener.Start);
+            listenerThtread.Start();
 
             connector.Connect();
 
@@ -60,6 +61,8 @@ namespace QService
             Console.WriteLine("Destroy {0}", connector.Id);
         }
 
+        int l = 0;
+        decimal price = 0;
         private void Connector_Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
         {
             foreach (var change in changes)
@@ -67,48 +70,44 @@ namespace QService
                 if (change.Key == StockSharp.Messages.Level1Fields.BestAskPrice || change.Key == StockSharp.Messages.Level1Fields.BestBidPrice)
                 {
                     //Console.WriteLine("{0} change {1} connector {2}", security.Code, change.Value, connector.Id);
-                    try
+                    if (price != (decimal)change.Value)
                     {
-                        Callback.NewLevel1Values((decimal)change.Value, (decimal)change.Value);
-                    }
-                    catch
-                    {
-                        connector.UnRegisterSecurity(security);
-                        operationContext.Channel.Close();
+                        try
+                        {
+                            Callback.NewLevel1Values((decimal)change.Value, (decimal)change.Value);
+                            price = (decimal)change.Value;
+                            Console.WriteLine(security.Code);
+                        }
+                        catch
+                        {
+                            connector.UnRegisterSecurity(security);
+                            operationContext.Channel.Close();
+                        }
                     }
                 }
-            };
-            Console.WriteLine("Level1 {0}", security.Code);
+            };           
         }
 
         public void SubscribeLevel1(Security security)
         {
             operationContext = OperationContext.Current;
 
-            var criteria = new StockSharp.BusinessEntities.Security
+            if (security != null)
             {
-                Code = security.Ticker,
-                Id = security.Code,
-                Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
-            };
+                var criteria = new StockSharp.BusinessEntities.Security
+                {
+                    Code = security.Ticker,
+                    Id = security.Code,
+                    Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
+                };
 
-            connector.RegisterSecurity(criteria);
-            Console.WriteLine("Register SECURITY {0}, {1}", connector.ConnectionState, connector.Id);
+                connector.RegisterSecurity(criteria);
+                Console.WriteLine("Register SECURITY {0}, {1}", connector.ConnectionState, connector.Id);
+            }
         }
 
         public void GetSecurities(string ticker, string exchangeBoardCode)
         {
-            //connector.LookupSecurities(new StockSharp.BusinessEntities.Security());
-
-            //var sec = new StockSharp.BusinessEntities.Security
-            //{
-            //    Id = "BBY@NYSE",
-            //    Code = "BBY",
-            //    Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
-            //};
-
-            //connector.RegisterSecurity(sec);
-
             var securities = new List<Security>();
 
             if (ticker != null && ticker != string.Empty)   //Если указан тикер бумаги
@@ -156,18 +155,23 @@ namespace QService
                     }
                 });
 
-                try
+                if (list.Count >= stakeSize)
                 {
-                    Callback.NewSecurities(list);
-                    list.Clear();
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("{0}", e);
-                    //operationContext.Channel.Close();
-                    break;
+                    try
+                    {
+                        Callback.NewSecurities(list);
+                        list.Clear();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("{0}", e);
+                        //operationContext.Channel.Close();
+                        break;
+                    }
                 }
             };
+
+            Callback.NewSecurities(list);
         }
 
         private void Con_ValuesChanged(StockSharp.BusinessEntities.Security arg1, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> arg2, DateTimeOffset arg3, DateTime arg4)
