@@ -36,24 +36,18 @@ namespace QService
 
             connector = new IQFeedTrader();
             connector.ValuesChanged += Connector_Level1Changed;
-
-            Thread.Sleep(500);
+            connector.NewSecurities += Connector_NewSecurities;
 
             Console.WriteLine("SID: {0}", operationContext.Channel.SessionId);
 
-            listener = new Listener(connector, operationContext);
+            //listener = new Listener(connector, operationContext);
 
-            listenerThtread = new Thread(listener.Start);
-            listenerThtread.Start();
+            //listenerThtread = new Thread(listener.Start);
+            //listenerThtread.Start();
 
             connector.Connect();
 
-            testSecurity = new StockSharp.BusinessEntities.Security()
-            {
-                Code = "A",
-                Id = "A@NYSE",
-                Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
-            };
+            Thread.Sleep(1000);
         }
 
         private void Channel_Closed(object sender, EventArgs e)
@@ -84,14 +78,14 @@ namespace QService
                     }
                 }
             };
-            Console.WriteLine("Level1");
+            Console.WriteLine("Level1 {0}", security.Code);
         }
 
         public void SubscribeLevel1(Security security)
         {
             operationContext = OperationContext.Current;
 
-            var criteria = new StockSharp.BusinessEntities.Security()
+            var criteria = new StockSharp.BusinessEntities.Security
             {
                 Code = security.Ticker,
                 Id = security.Code,
@@ -99,12 +93,21 @@ namespace QService
             };
 
             connector.RegisterSecurity(criteria);
+            Console.WriteLine("Register SECURITY {0}, {1}", connector.ConnectionState, connector.Id);
         }
 
         public void GetSecurities(string ticker, string exchangeBoardCode)
         {
-            connector.RegisterSecurity(testSecurity);
-            Console.WriteLine("RegisterSecurity");
+            //connector.LookupSecurities(new StockSharp.BusinessEntities.Security());
+
+            //var sec = new StockSharp.BusinessEntities.Security
+            //{
+            //    Id = "BBY@NYSE",
+            //    Code = "BBY",
+            //    Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
+            //};
+
+            //connector.RegisterSecurity(sec);
 
             var securities = new List<Security>();
 
@@ -165,6 +168,25 @@ namespace QService
                     break;
                 }
             };
+        }
+
+        private void Con_ValuesChanged(StockSharp.BusinessEntities.Security arg1, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> arg2, DateTimeOffset arg3, DateTime arg4)
+        {
+            Console.WriteLine("Values changed");
+        }
+
+        int i = 0;
+
+        private void Connector_NewSecurities(IEnumerable<StockSharp.BusinessEntities.Security> obj)
+        {
+            if (i < 1)
+            {
+                foreach(var security in obj)
+                {
+
+                    i++;
+                }
+            }         
         }
 
         public List<ExchangeBoard> GetExchangeBoards(string exchangeBoardCode)
