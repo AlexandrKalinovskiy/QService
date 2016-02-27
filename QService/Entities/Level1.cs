@@ -23,6 +23,6 @@ namespace QService.Entities
         public decimal BestAskVolume { get; set; }
 
         [IgnoreDataMember]
-        public Security security { get; set; }
+        public StockSharp.BusinessEntities.Security Security { get; set; }
     }
 }

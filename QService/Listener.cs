@@ -72,7 +72,9 @@ namespace QService
                                 };
                                 candlesStake.Add(rcandle);
                             };
+                            Console.WriteLine("Send {0}", candles.Count());
                             Callback.NewCandles(candlesStake);
+                            Thread.Sleep(1000);
                             candlesStake.Clear();
                         }
                     }
@@ -94,12 +96,11 @@ namespace QService
                     try
                     {
                         Callback.NewLevel1Values(level1);
-                        Console.WriteLine("Queue size {0}", responseLevel1Queue.Count);
+                        //Console.WriteLine("Queue size {0}", responseLevel1Queue.Count);
                     }
                     catch
                     {
-                        var security = (StockSharp.BusinessEntities.Security)level1.security;
-                        connector.UnRegisterSecurity(security);
+                        //connector.UnRegisterSecurity(level1.Security);
                     }
                 }
                 else

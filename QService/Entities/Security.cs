@@ -27,15 +27,39 @@ namespace QService.Entities
 
         public static explicit operator StockSharp.BusinessEntities.Security(Security s)
         {
-            return new StockSharp.BusinessEntities.Security
+            if (s != null)
             {
-                Code = s.Ticker,
-                Id = s.Code,
-                Board = new StockSharp.BusinessEntities.ExchangeBoard
+                return new StockSharp.BusinessEntities.Security
                 {
-                    Code = s.ExchangeBoard.Code
-                }
-            };
+                    Code = s.Ticker,
+                    Id = s.Code,
+                    Board = new StockSharp.BusinessEntities.ExchangeBoard
+                    {
+                        Code = s.ExchangeBoard.Code
+                    }
+                };
+            }
+
+            return null;
+        }
+
+        public static explicit operator Security(StockSharp.BusinessEntities.Security s)
+        {
+            if (s != null)
+            {
+                return new Security
+                {
+                    Ticker = s.Code,
+                    Code = s.Id,
+                    Name = s.Name,
+                    ExchangeBoard = new ExchangeBoard
+                    {
+                        Code = s.Board.Code
+                    }
+                };
+            }
+
+            return null;
         }
     }
 }
