@@ -16,7 +16,7 @@ using System.ComponentModel;
 namespace QService
 {
     // ПРИМЕЧАНИЕ. Команду "Переименовать" в меню "Рефакторинг" можно использовать для одновременного изменения имени класса "DataFeed" в коде и файле конфигурации.
-    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Multiple)]
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Reentrant)]
     public class DataFeed : IDataFeed
     {
         private IQFeedTrader connector;
@@ -60,6 +60,7 @@ namespace QService
             Console.WriteLine("Destroy {0}", connector.Id);
         }
 
+        decimal price = 0;
         private void Connector_Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
         {
             foreach (var change in changes)
@@ -67,14 +68,18 @@ namespace QService
                 if (change.Key == StockSharp.Messages.Level1Fields.BestAskPrice || change.Key == StockSharp.Messages.Level1Fields.BestBidPrice)
                 {
                     //Console.WriteLine("{0} change {1} connector {2}", security.Code, change.Value, connector.Id);
-                    try
+                    if (price != (decimal)change.Value)
                     {
-                        Callback.NewLevel1Values((decimal)change.Value, (decimal)change.Value);
-                    }
-                    catch
-                    {
-                        connector.UnRegisterSecurity(security);
-                        operationContext.Channel.Close();
+                        try
+                        {
+                            Callback.NewLevel1Values((decimal)change.Value, (decimal)change.Value);
+                            price = (decimal)change.Value;
+                        }
+                        catch
+                        {
+                            connector.UnRegisterSecurity(security);
+                            operationContext.Channel.Close();
+                        }
                     }
                 }
             };
@@ -87,8 +92,10 @@ namespace QService
 
             var criteria = new StockSharp.BusinessEntities.Security
             {
-                Code = security.Ticker,
-                Id = security.Code,
+                //Code = security.Ticker,
+                //Id = security.Code,
+                Code = "GE",
+                Id = "GE@NYSE",
                 Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
             };
 
