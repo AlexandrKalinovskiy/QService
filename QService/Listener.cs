@@ -72,9 +72,8 @@ namespace QService
                                 };
                                 candlesStake.Add(rcandle);
                             };
-                            Console.WriteLine("Send {0}", candles.Count());
+                            Console.WriteLine("request {0} {1}", requestCandlesQueue.Count, candles.Count());
                             Callback.NewCandles(candlesStake);
-                            Thread.Sleep(1000);
                             candlesStake.Clear();
                         }
                     }
