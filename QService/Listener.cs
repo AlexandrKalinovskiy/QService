@@ -1,21 +1,20 @@
 ﻿using QService.Entities;
 using System.Linq;
 using StockSharp.IQFeed;
-using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 using System.Threading;
-using System.Collections;
 
 namespace QService
 {
     /// <summary>
     /// Класс выполняется в отдельном потоке и постоянно следит за очередью сообщений. 
-    /// Служит для того, чтобы распределять нагрузку на сервер при большом количестве асинхронных запросов от клиентов.
+    /// Служит для того, чтобы распределять нагрузку на сервер при большом количестве асинхронных запросов от клиентов и большом количестве ответов от сервера.
     /// </summary>
     public class Listener
     {
-        public Queue<RequestCandles> requestCandlesQueue;
+        public Queue<RequestCandles> requestCandlesQueue;   //Очередь запросов на получение свечек по указанным инструментам
+        public Queue<Level1> responseLevel1Queue;   //Очередь ответов новых значений Level1
         public IQFeedTrader connector;
 
         private OperationContext operationContext;
@@ -27,7 +26,7 @@ namespace QService
             requestCandlesQueue = new Queue<RequestCandles>();
         }
 
-        public void Start()
+        public void RequestCandlesStart()
         {
             bool isSuccess;
             List<Candle> candlesStake = new List<Candle>();
@@ -36,7 +35,7 @@ namespace QService
             {
                 Thread.Sleep(10);
                 if (operationContext.Channel.State == CommunicationState.Opened && requestCandlesQueue.Count > 0)   //Выполнять код будем если только очередь не пуста и канал связи с клиентом в порядке
-                {                    
+                {
                     try
                     {
                         var request = requestCandlesQueue.Dequeue();    //Запросы выполняются в порядке очереди
@@ -71,6 +70,25 @@ namespace QService
                             Callback.NewCandles(candlesStake);
                             candlesStake.Clear();
                         }
+                    }
+                    catch
+                    {
+
+                    }
+                }
+            }
+        }
+
+        public void ResponseLevel1()
+        {
+            while (true)
+            {
+                if (operationContext.Channel.State == CommunicationState.Opened && requestCandlesQueue.Count > 0)   //Выполнять код будем если только очередь не пуста и канал связи с клиентом в порядке
+                {
+                    try
+                    {
+                        var level1 = responseLevel1Queue.Dequeue();    //Запросы выполняются в порядке очереди
+                        Callback.NewLevel1Values(level1);
                     }
                     catch
                     {

@@ -43,7 +43,7 @@ namespace QService
 
             listener = new Listener(connector, operationContext);
 
-            listenerThtread = new Thread(listener.Start);
+            listenerThtread = new Thread(listener.RequestCandlesStart);
             listenerThtread.Start();
 
             connector.Connect();
@@ -74,7 +74,7 @@ namespace QService
                     {
                         try
                         {
-                            Callback.NewLevel1Values((decimal)change.Value, (decimal)change.Value);
+
                             price = (decimal)change.Value;
                             Console.WriteLine(security.Code);
                         }
@@ -108,70 +108,92 @@ namespace QService
 
         public void GetSecurities(string ticker, string exchangeBoardCode)
         {
-            var securities = new List<Security>();
-
-            if (ticker != null && ticker != string.Empty)   //Если указан тикер бумаги
+            int i = 0;
+            bool run = true;
+            while (run)
             {
-                securities = context.Securities.Where(s => s.Ticker == ticker).ToList();
+                //Thread.Sleep(1);
+                Random random = new Random();
 
-                if (securities.Count == 0)
-                    Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящей бумаги
-            }
-            else if (exchangeBoardCode != null && exchangeBoardCode != string.Empty)
-            {
-                var exchangeBoard = context.ExchangeBoards.Where(e => e.Code == exchangeBoardCode).FirstOrDefault();
+                var c = random.Next(0, 1000);
+                var d = random.Next(0, 1000);
 
-                if (exchangeBoard != null)
+                try
                 {
-                    securities = context.Securities.Where(s => s.ExchangeBoard.Id == exchangeBoard.Id).ToList();
-
-                    if (securities.Count == 0)
-                        Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
+                    Callback.NewLevel1Values(c, d);
+                    Console.WriteLine(i++);
                 }
-                else
+                catch
                 {
-                    Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
-                }
-            }
-
-            //Выполнить преобразование в "чистую" модель данных, в случае если найдены бумаги по указанным критериям
-            var list = new List<Security>();
-
-            foreach (var security in securities)
-            {
-                list.Add(new Security
-                {
-                    Id = security.Id,
-                    Code = security.Code,
-                    Name = security.Name,
-                    StepPrice = security.StepPrice,
-                    Ticker = security.Ticker,
-                    ExchangeBoard = new ExchangeBoard
-                    {
-                        Id = security.ExchangeBoard.Id,
-                        Code = security.ExchangeBoard.Code,
-                        Name = security.ExchangeBoard.Name,
-                        Description = security.ExchangeBoard.Description
-                    }
-                });
-
-                if (list.Count >= stakeSize)
-                {
-                    try
-                    {
-                        Callback.NewSecurities(list);
-                        list.Clear();
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("{0}", e);
-                        //operationContext.Channel.Close();
-                        break;
-                    }
+                    run = false;
+                    operationContext.Channel.Close();
                 }
             };
 
-            Callback.NewSecurities(list);
+            //var securities = new List<Security>();
+
+            //if (ticker != null && ticker != string.Empty)   //Если указан тикер бумаги
+            //{
+            //    securities = context.Securities.Where(s => s.Ticker == ticker).ToList();
+
+            //    if (securities.Count == 0)
+            //        Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящей бумаги
+            //}
+            //else if (exchangeBoardCode != null && exchangeBoardCode != string.Empty)
+            //{
+            //    var exchangeBoard = context.ExchangeBoards.Where(e => e.Code == exchangeBoardCode).FirstOrDefault();
+
+            //    if (exchangeBoard != null)
+            //    {
+            //        securities = context.Securities.Where(s => s.ExchangeBoard.Id == exchangeBoard.Id).ToList();
+
+            //        if (securities.Count == 0)
+            //            Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
+            //    }
+            //    else
+            //    {
+            //        Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
+            //    }
+            //}
+
+            ////Выполнить преобразование в "чистую" модель данных, в случае если найдены бумаги по указанным критериям
+            //var list = new List<Security>();
+
+            //foreach (var security in securities)
+            //{
+            //    list.Add(new Security
+            //    {
+            //        Id = security.Id,
+            //        Code = security.Code,
+            //        Name = security.Name,
+            //        StepPrice = security.StepPrice,
+            //        Ticker = security.Ticker,
+            //        ExchangeBoard = new ExchangeBoard
+            //        {
+            //            Id = security.ExchangeBoard.Id,
+            //            Code = security.ExchangeBoard.Code,
+            //            Name = security.ExchangeBoard.Name,
+            //            Description = security.ExchangeBoard.Description
+            //        }
+            //    });
+
+            //    if (list.Count >= stakeSize)
+            //    {
+            //        try
+            //        {
+            //            Callback.NewSecurities(list);
+            //            list.Clear();
+            //        }
+            //        catch (Exception e)
+            //        {
+            //            Console.WriteLine("{0}", e);
+            //            //operationContext.Channel.Close();
+            //            break;
+            //        }
+            //    }
+            //};
+
+            //Callback.NewSecurities(list);
         }
 
         private void Con_ValuesChanged(StockSharp.BusinessEntities.Security arg1, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> arg2, DateTimeOffset arg3, DateTime arg4)
