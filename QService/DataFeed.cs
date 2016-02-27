@@ -22,8 +22,8 @@ namespace QService
         private IQFeedTrader connector;
         public OperationContext operationContext;
         private EFDbContext context;
-        private Thread listenerThtread;
         private Listener listener;
+        private const int stakeSize = 500;
 
         private StockSharp.BusinessEntities.Security testSecurity;
 
@@ -36,14 +36,13 @@ namespace QService
 
             connector = new IQFeedTrader();
             connector.ValuesChanged += Connector_Level1Changed;
-            connector.NewSecurities += Connector_NewSecurities;
 
             Console.WriteLine("SID: {0}", operationContext.Channel.SessionId);
 
-            //listener = new Listener(connector, operationContext);
+            listener = new Listener(connector, operationContext);
 
-            //listenerThtread = new Thread(listener.Start);
-            //listenerThtread.Start();
+            new Thread(listener.CandlesQueueStart).Start();
+            new Thread(listener.Level1QueueStart).Start();
 
             connector.Connect();
 
@@ -60,140 +59,131 @@ namespace QService
             Console.WriteLine("Destroy {0}", connector.Id);
         }
 
-        decimal price = 0;
         private void Connector_Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
         {
             foreach (var change in changes)
             {
                 if (change.Key == StockSharp.Messages.Level1Fields.BestAskPrice || change.Key == StockSharp.Messages.Level1Fields.BestBidPrice)
                 {
-                    //Console.WriteLine("{0} change {1} connector {2}", security.Code, change.Value, connector.Id);
-                    if (price != (decimal)change.Value)
+                    var level1 = new Level1
                     {
-                        try
-                        {
-                            Callback.NewLevel1Values((decimal)change.Value, (decimal)change.Value);
-                            price = (decimal)change.Value;
-                        }
-                        catch
-                        {
-                            connector.UnRegisterSecurity(security);
-                            operationContext.Channel.Close();
-                        }
-                    }
+                        BestAskPrice = (decimal)change.Value,
+                        BestBidPrice = (decimal)change.Value
+                    };
+
+                    listener.responseLevel1Queue.Enqueue(level1);
                 }
-            };
-            Console.WriteLine("Level1 {0}", security.Code);
+            }
         }
 
         public void SubscribeLevel1(Security security)
         {
             operationContext = OperationContext.Current;
 
-            var criteria = new StockSharp.BusinessEntities.Security
+            if (security != null)
             {
-                //Code = security.Ticker,
-                //Id = security.Code,
-                Code = "GE",
-                Id = "GE@NYSE",
-                Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
-            };
+                var criteria = new StockSharp.BusinessEntities.Security
+                {
+                    //Code = security.Ticker,
+                    //Id = security.Code,
+                    Code = "GE",
+                    Id = "GE@NYSE",
+                    Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
+                };
 
-            connector.RegisterSecurity(criteria);
-            Console.WriteLine("Register SECURITY {0}, {1}", connector.ConnectionState, connector.Id);
+                connector.RegisterSecurity(criteria);
+                Console.WriteLine("Register SECURITY {0}, {1}", connector.ConnectionState, connector.Id);
+            }
         }
 
         public void GetSecurities(string ticker, string exchangeBoardCode)
         {
-            //connector.LookupSecurities(new StockSharp.BusinessEntities.Security());
+            int i = 0;
+            bool run = true;
+            while (i < 50000)
+            {
+                //Thread.Sleep(1);
+                Random random = new Random();
 
-            //var sec = new StockSharp.BusinessEntities.Security
+                var c = random.Next(0, 1000);
+                var d = random.Next(0, 1000);
+
+                var level1 = new Level1
+                {
+                    BestAskPrice = c,
+                    BestBidPrice = d
+                };
+
+                listener.responseLevel1Queue.Enqueue(level1);
+
+                run = false;
+                i++;
+            };
+
+            //var securities = new List<Security>();
+
+            //if (ticker != null && ticker != string.Empty)   //Если указан тикер бумаги
             //{
-            //    Id = "BBY@NYSE",
-            //    Code = "BBY",
-            //    Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
+            //    securities = context.Securities.Where(s => s.Ticker == ticker).ToList();
+
+            //    if (securities.Count == 0)
+            //        Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящей бумаги
+            //}
+            //else if (exchangeBoardCode != null && exchangeBoardCode != string.Empty)
+            //{
+            //    var exchangeBoard = context.ExchangeBoards.Where(e => e.Code == exchangeBoardCode).FirstOrDefault();
+
+            //    if (exchangeBoard != null)
+            //    {
+            //        securities = context.Securities.Where(s => s.ExchangeBoard.Id == exchangeBoard.Id).ToList();
+
+            //        if (securities.Count == 0)
+            //            Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
+            //    }
+            //    else
+            //    {
+            //        Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
+            //    }
+            //}
+
+            ////Выполнить преобразование в "чистую" модель данных, в случае если найдены бумаги по указанным критериям
+            //var list = new List<Security>();
+
+            //foreach (var security in securities)
+            //{
+            //    list.Add(new Security
+            //    {
+            //        Id = security.Id,
+            //        Code = security.Code,
+            //        Name = security.Name,
+            //        StepPrice = security.StepPrice,
+            //        Ticker = security.Ticker,
+            //        ExchangeBoard = new ExchangeBoard
+            //        {
+            //            Id = security.ExchangeBoard.Id,
+            //            Code = security.ExchangeBoard.Code,
+            //            Name = security.ExchangeBoard.Name,
+            //            Description = security.ExchangeBoard.Description
+            //        }
+            //    });
+
+            //    if (list.Count >= stakeSize)
+            //    {
+            //        try
+            //        {
+            //            Callback.NewSecurities(list);
+            //            list.Clear();
+            //        }
+            //        catch (Exception e)
+            //        {
+            //            Console.WriteLine("{0}", e);
+            //            //operationContext.Channel.Close();
+            //            break;
+            //        }
+            //    }
             //};
 
-            //connector.RegisterSecurity(sec);
-
-            var securities = new List<Security>();
-
-            if (ticker != null && ticker != string.Empty)   //Если указан тикер бумаги
-            {
-                securities = context.Securities.Where(s => s.Ticker == ticker).ToList();
-
-                if (securities.Count == 0)
-                    Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящей бумаги
-            }
-            else if (exchangeBoardCode != null && exchangeBoardCode != string.Empty)
-            {
-                var exchangeBoard = context.ExchangeBoards.Where(e => e.Code == exchangeBoardCode).FirstOrDefault();
-
-                if (exchangeBoard != null)
-                {
-                    securities = context.Securities.Where(s => s.ExchangeBoard.Id == exchangeBoard.Id).ToList();
-
-                    if (securities.Count == 0)
-                        Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
-                }
-                else
-                {
-                    Callback.NewSecurities(new List<Security>());    //Возвратить пустой список в случае отсутствия подходящих бумаг
-                }
-            }
-
-            //Выполнить преобразование в "чистую" модель данных, в случае если найдены бумаги по указанным критериям
-            var list = new List<Security>();
-
-            foreach (var security in securities)
-            {
-                list.Add(new Security
-                {
-                    Id = security.Id,
-                    Code = security.Code,
-                    Name = security.Name,
-                    StepPrice = security.StepPrice,
-                    Ticker = security.Ticker,
-                    ExchangeBoard = new ExchangeBoard
-                    {
-                        Id = security.ExchangeBoard.Id,
-                        Code = security.ExchangeBoard.Code,
-                        Name = security.ExchangeBoard.Name,
-                        Description = security.ExchangeBoard.Description
-                    }
-                });
-
-                try
-                {
-                    Callback.NewSecurities(list);
-                    list.Clear();
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("{0}", e);
-                    //operationContext.Channel.Close();
-                    break;
-                }
-            };
-        }
-
-        private void Con_ValuesChanged(StockSharp.BusinessEntities.Security arg1, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> arg2, DateTimeOffset arg3, DateTime arg4)
-        {
-            Console.WriteLine("Values changed");
-        }
-
-        int i = 0;
-
-        private void Connector_NewSecurities(IEnumerable<StockSharp.BusinessEntities.Security> obj)
-        {
-            if (i < 1)
-            {
-                foreach(var security in obj)
-                {
-
-                    i++;
-                }
-            }         
+            //Callback.NewSecurities(list);
         }
 
         public List<ExchangeBoard> GetExchangeBoards(string exchangeBoardCode)

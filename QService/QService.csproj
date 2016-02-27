@@ -87,11 +87,13 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Admin\Info.cs" />
     <Compile Include="Admin\Syncing.cs" />
     <Compile Include="Concrete\EFDbContext.cs" />
     <Compile Include="DataFeed.cs" />
     <Compile Include="Entities\Candle.cs" />
     <Compile Include="Entities\ExchangeBoard.cs" />
+    <Compile Include="Entities\Level1.cs" />
     <Compile Include="Entities\RequestCandles.cs" />
     <Compile Include="Entities\Security.cs" />
     <Compile Include="IDataFeed.cs" />

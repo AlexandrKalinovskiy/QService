@@ -28,7 +28,7 @@ namespace QService
         void NewSecurities(IEnumerable<Security> securities);
 
         [OperationContract(IsOneWay = true)]
-        void NewLevel1Values(decimal BestBidPrice, decimal BestAskPrice);
+        void NewLevel1Values(Level1 level1);
 
         [OperationContract(IsOneWay = true)]
         void NewCandles(IEnumerable<Candle> candles);

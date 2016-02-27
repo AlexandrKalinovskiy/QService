@@ -1,4 +1,6 @@
-﻿using System.Runtime.Serialization;
+﻿using System;
+using System.Runtime.Serialization;
+using StockSharp.BusinessEntities;
 
 namespace QService.Entities
 {
@@ -22,5 +24,18 @@ namespace QService.Entities
 
         [DataMember]
         public virtual ExchangeBoard ExchangeBoard { get; set; }
+
+        public static explicit operator StockSharp.BusinessEntities.Security(Security s)
+        {
+            return new StockSharp.BusinessEntities.Security
+            {
+                Code = s.Ticker,
+                Id = s.Code,
+                Board = new StockSharp.BusinessEntities.ExchangeBoard
+                {
+                    Code = s.ExchangeBoard.Code
+                }
+            };
+        }
     }
 }
