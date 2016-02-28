@@ -32,7 +32,10 @@ namespace QService
             context = new EFDbContext();
 
             operationContext = OperationContext.Current;
+            operationContext.Channel.Opened += Channel_Opened;
             operationContext.Channel.Closed += Channel_Closed;
+
+            var secContext = ServiceSecurityContext.Current;
 
             connector = new IQFeedTrader();
             connector.ValuesChanged += Connector_Level1Changed;
@@ -47,6 +50,11 @@ namespace QService
             connector.Connect();
 
             Thread.Sleep(1000);
+        }
+
+        private void Channel_Opened(object sender, EventArgs e)
+        {
+            Console.WriteLine("Client connected. {0}", connector.Id);
         }
 
         private void Channel_Closed(object sender, EventArgs e)
