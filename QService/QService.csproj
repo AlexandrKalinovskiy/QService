@@ -75,6 +75,7 @@
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
+    <Reference Include="System.IdentityModel" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Security" />
     <Reference Include="System.ServiceModel" />
@@ -89,6 +90,7 @@
   <ItemGroup>
     <Compile Include="Admin\Info.cs" />
     <Compile Include="Admin\Syncing.cs" />
+    <Compile Include="Admin\UserAuthentication.cs" />
     <Compile Include="Concrete\EFDbContext.cs" />
     <Compile Include="DataFeed.cs" />
     <Compile Include="Entities\Candle.cs" />
