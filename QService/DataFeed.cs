@@ -80,7 +80,15 @@ namespace QService
                         Security = security
                     };
 
-                    listener.responseLevel1Queue.Enqueue(level1);
+                    try
+                    {
+                        listener.responseLevel1Queue.Enqueue(level1);
+                        Console.WriteLine("New Level1 {0}", security.Code);
+                    }
+                    catch(Exception e)
+                    {
+                        Console.WriteLine("Error {0}", e);
+                    }
                 }
             }
         }
@@ -93,10 +101,8 @@ namespace QService
             {
                 var criteria = new StockSharp.BusinessEntities.Security
                 {
-                    //Code = security.Ticker,
-                    //Id = security.Code,
-                    Code = "GE",
-                    Id = "GE@NYSE",
+                    Code = security.Ticker,
+                    Id = security.Code,
                     Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
                 };
 

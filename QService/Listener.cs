@@ -92,14 +92,17 @@ namespace QService
                 if (info.IsChannelOpened(operationContext) && responseLevel1Queue.Count > 0)   //Выполнять код будем если только очередь не пуста и канал связи с клиентом в порядке
                 {
                     var level1 = responseLevel1Queue.Dequeue();    //Запросы выполняются в порядке очереди
-                    try
+                    if (level1 != null)
                     {
-                        Callback.NewLevel1Values(level1);
-                        //Console.WriteLine("Queue size {0}", responseLevel1Queue.Count);
-                    }
-                    catch
-                    {
-                        //connector.UnRegisterSecurity(level1.Security);
+                        try
+                        {
+                            Callback.NewLevel1Values(level1);
+                            //Console.WriteLine("Queue size {0}", responseLevel1Queue.Count);
+                        }
+                        catch
+                        {
+                            connector.UnRegisterSecurity(level1.Security);
+                        }
                     }
                 }
                 else
