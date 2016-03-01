@@ -115,25 +115,25 @@ namespace QService
         {
             int i = 0;
             bool run = true;
-            //while (i < 5000)
-            //{
-            //    //Thread.Sleep(1);
-            //    Random random = new Random();
+            while (i < 50000)
+            {
+                //Thread.Sleep(1);
+                Random random = new Random();
 
-            //    var c = random.Next(0, 1000);
-            //    var d = random.Next(0, 1000);
+                var c = random.Next(0, 1000);
+                var d = random.Next(0, 1000);
 
-            //    var level1 = new Level1
-            //    {
-            //        BestAskPrice = c,
-            //        BestBidPrice = d
-            //    };
+                var level1 = new Level1
+                {
+                    BestAskPrice = c,
+                    BestBidPrice = d
+                };
 
-            //    listener.responseLevel1Queue.Enqueue(level1);
+                listener.responseLevel1Queue.Enqueue(level1);
 
-            //    run = false;
-            //    i++;
-            //};
+                run = false;
+                i++;
+            };
 
             var securities = new List<Security>();
 
