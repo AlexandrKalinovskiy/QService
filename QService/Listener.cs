@@ -18,6 +18,8 @@ namespace QService
         public Queue<RequestCandles> requestCandlesQueue;   //Очередь запросов на получение свечек по указанным инструментам
         public Queue<Level1> responseLevel1Queue;   //Очередь ответов новых значений Level1
         public IQFeedTrader connector;
+        static object locker = new object();
+        public int Counter = 0;
 
         private OperationContext operationContext;
         private Info info;
@@ -87,28 +89,55 @@ namespace QService
 
         public void Level1QueueStart()
         {
+            int i = 0;
+            Console.WriteLine("i = {0} {1}", i, operationContext.Channel.SessionId);
             while (true)
             {
-                if (info.IsChannelOpened(operationContext) && responseLevel1Queue.Count > 0)   //Выполнять код будем если только очередь не пуста и канал связи с клиентом в порядке
-                {
-                    var level1 = responseLevel1Queue.Dequeue();    //Запросы выполняются в порядке очереди
-                    if (level1 != null)
-                    {
-                        try
-                        {
-                            Callback.NewLevel1Values(level1);
-                            //Console.WriteLine("Queue size {0}", responseLevel1Queue.Count);
-                        }
-                        catch
-                        {
-                            connector.UnRegisterSecurity(level1.Security);
-                        }
-                    }
-                }
-                else
-                {
-                    Thread.Sleep(1);
-                }
+                Thread.Sleep(1);
+                //Callback.Test(i++);
+                
+                //lock (locker)
+                //{            
+                //    if (info.IsChannelOpened(operationContext) && responseLevel1Queue.Count > 0)   //Выполнять код будем если только очередь не пуста и канал связи с клиентом в порядке
+                //    {
+                //        var level1 = responseLevel1Queue.Dequeue();    //Запросы выполняются в порядке очереди
+                //                                                       //var level1 = new Level1
+                //                                                       //{
+                //                                                       //    BestAskPrice = 0,
+                //                                                       //    BestAskVolume = 0,
+                //                                                       //    BestBidPrice = 1,
+                //                                                       //    BestBidVolume = 1,
+                //                                                       //    Security = new StockSharp.BusinessEntities.Security
+                //                                                       //    {
+                //                                                       //        Code = "A",
+                //                                                       //        Board = new StockSharp.BusinessEntities.ExchangeBoard
+                //                                                       //        {
+                //                                                       //            Code = "NYSE"
+                //                                                       //        }
+                //                                                       //    }
+                //                                                       //};
+                //        if (level1 != null)
+                //        {
+                //            try
+                //            {
+                //                //Callback.NewLevel1Values(level1);
+                //                Callback.Test(i);
+                //                Console.WriteLine("Send level1 {0} {1} {2} : ", level1.Security.Code, i++, responseLevel1Queue.Count);
+                //                //Console.WriteLine("Queue size {0}", responseLevel1Queue.Count);
+                //            }
+                //            catch (Exception e)
+                //            {
+                //                Console.WriteLine("Error {0}", e);
+                //                //connector.UnRegisterSecurity(level1.Security);
+                //                //Console.WriteLine("UnRegistered {0}", level1.Security.Code);
+                //            }
+                //        }
+                //    }
+                //    else
+                //    {
+                //        Thread.Sleep(1);
+                //    }
+                //}
             }
         }
 
