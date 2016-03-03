@@ -24,8 +24,9 @@ namespace QService
         private EFDbContext context;
         private Listener listener;
         private const int stakeSize = 500;
+        static object locker = new object();
 
-        private StockSharp.BusinessEntities.Security testSecurity;
+        private Queue<StockSharp.BusinessEntities.Security> registeredSecurityQuery;
 
         DataFeed()
         {
@@ -34,6 +35,8 @@ namespace QService
             operationContext = OperationContext.Current;
             operationContext.Channel.Opened += Channel_Opened;
             operationContext.Channel.Closed += Channel_Closed;
+
+            registeredSecurityQuery = new Queue<StockSharp.BusinessEntities.Security>();
 
             var secContext = ServiceSecurityContext.Current;
 
@@ -60,6 +63,10 @@ namespace QService
         private void Channel_Closed(object sender, EventArgs e)
         {
             Console.WriteLine("Client disconnected. {0}", connector.Id);
+            foreach(var security in registeredSecurityQuery)
+            {
+                connector.UnRegisterSecurity(security);
+            }
         }
 
         ~DataFeed()
@@ -67,6 +74,7 @@ namespace QService
             Console.WriteLine("Destroy {0}", connector.Id);
         }
 
+        int c = 0;
         private void Connector_Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
         {
             foreach (var change in changes)
@@ -80,14 +88,16 @@ namespace QService
                         Security = security
                     };
 
+                    //Console.WriteLine("NEW LEVEL1 {0} {1}", security.Code, c++);
                     try
                     {
                         listener.responseLevel1Queue.Enqueue(level1);
-                        Console.WriteLine("New Level1 {0}", security.Code);
+                        Callback.NewLevel1Values(level1);
+                        Console.WriteLine("Send level1: {0}", security.Code);
                     }
                     catch(Exception e)
                     {
-                        Console.WriteLine("Error {0}", e);
+                        connector.UnRegisterSecurity(security);
                     }
                 }
             }
@@ -95,8 +105,6 @@ namespace QService
 
         public void SubscribeLevel1(Security security)
         {
-            operationContext = OperationContext.Current;
-
             if (security != null)
             {
                 var criteria = new StockSharp.BusinessEntities.Security
@@ -106,6 +114,7 @@ namespace QService
                     Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
                 };
 
+                registeredSecurityQuery.Enqueue(criteria);
                 connector.RegisterSecurity(criteria);
                 Console.WriteLine("Register SECURITY {0}, {1}", connector.ConnectionState, connector.Id);
             }
@@ -229,6 +238,13 @@ namespace QService
             {
                 return operationContext.GetCallbackChannel<IDataFeedCallback>();
             }
+        }
+
+        //Метод запускается новом потоке и регистрирует инструмент для получение Level1
+        public void RegisterSecurity(object security)
+        {
+            Console.WriteLine("Register in new thread");
+            connector.RegisterSecurity((StockSharp.BusinessEntities.Security)security);
         }
     }
 }

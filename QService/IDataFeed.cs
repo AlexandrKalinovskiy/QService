@@ -15,7 +15,7 @@ namespace QService
         [OperationContract]
         List<ExchangeBoard> GetExchangeBoards(string code);
 
-        [OperationContract]
+        [OperationContract(IsOneWay = true)]
         void SubscribeLevel1(Security security);
 
         [OperationContract(IsOneWay = true)]
@@ -32,5 +32,8 @@ namespace QService
 
         [OperationContract(IsOneWay = true)]
         void NewCandles(IEnumerable<Candle> candles);
+
+        [OperationContract(IsOneWay = true)]
+        void Test(int i);
     }
 }
