@@ -24,7 +24,6 @@ namespace QService
         private EFDbContext context;
         private Listener listener;
         private const int stakeSize = 500;
-        static object locker = new object();
 
         private Queue<StockSharp.BusinessEntities.Security> registeredSecurityQuery;
 
@@ -48,7 +47,6 @@ namespace QService
             listener = new Listener(connector, operationContext);
 
             new Thread(listener.CandlesQueueStart).Start();
-            new Thread(listener.Level1QueueStart).Start();
 
             connector.Connect();
 
@@ -91,12 +89,9 @@ namespace QService
                         Security = security
                     };
 
-                    //Console.WriteLine("NEW LEVEL1 {0} {1}", security.Code, c++);
                     try
                     {
-                        listener.responseLevel1Queue.Enqueue(level1);
                         Callback.NewLevel1Values(level1);
-                        Console.WriteLine("Send level1: {0}", security.Code);
                     }
                     catch(Exception e)
                     {
