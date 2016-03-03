@@ -16,7 +16,7 @@ using System.ComponentModel;
 namespace QService
 {
     // ПРИМЕЧАНИЕ. Команду "Переименовать" в меню "Рефакторинг" можно использовать для одновременного изменения имени класса "DataFeed" в коде и файле конфигурации.
-    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Reentrant)]
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Single)]
     public class DataFeed : IDataFeed
     {
         private IQFeedTrader connector;
@@ -113,28 +113,6 @@ namespace QService
 
         public void GetSecurities(string ticker, string exchangeBoardCode)
         {
-            int i = 0;
-            bool run = true;
-            while (i < 50000)
-            {
-                //Thread.Sleep(1);
-                Random random = new Random();
-
-                var c = random.Next(0, 1000);
-                var d = random.Next(0, 1000);
-
-                var level1 = new Level1
-                {
-                    BestAskPrice = c,
-                    BestBidPrice = d
-                };
-
-                listener.responseLevel1Queue.Enqueue(level1);
-
-                run = false;
-                i++;
-            };
-
             var securities = new List<Security>();
 
             if (ticker != null && ticker != string.Empty)   //Если указан тикер бумаги
