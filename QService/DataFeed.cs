@@ -67,7 +67,6 @@ namespace QService
                 connector.UnRegisterSecurity(security);
             }
             connector.Disconnect();
-            connector.Dispose();
         }
 
         ~DataFeed()
