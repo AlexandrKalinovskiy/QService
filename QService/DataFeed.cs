@@ -12,11 +12,12 @@ using QService.Concrete;
 using StockSharp.Algo.Candles;
 using Ecng.Common;
 using System.ComponentModel;
+using QService.Admin;
 
 namespace QService
 {
     // ПРИМЕЧАНИЕ. Команду "Переименовать" в меню "Рефакторинг" можно использовать для одновременного изменения имени класса "DataFeed" в коде и файле конфигурации.
-    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Single)]
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Reentrant)]
     public class DataFeed : IDataFeed
     {
         private IQFeedTrader connector;
@@ -24,8 +25,8 @@ namespace QService
         private EFDbContext context;
         private Listener listener;
         private const int stakeSize = 500;
-
-        private Queue<StockSharp.BusinessEntities.Security> registeredSecurityQuery;
+        private const int conCount = 5;
+        private Info info; 
 
         DataFeed()
         {
@@ -35,7 +36,7 @@ namespace QService
             operationContext.Channel.Opened += Channel_Opened;
             operationContext.Channel.Closed += Channel_Closed;
 
-            registeredSecurityQuery = new Queue<StockSharp.BusinessEntities.Security>();
+            info = new Info();
 
             var secContext = ServiceSecurityContext.Current;
 
@@ -46,7 +47,10 @@ namespace QService
 
             listener = new Listener(connector, operationContext);
 
-            new Thread(listener.CandlesQueueStart).Start();
+            for (int i = 0; i < conCount; i++)
+            {
+                new Thread(listener.CandlesQueueStart).Start();
+            }
 
             connector.Connect();
 
@@ -56,17 +60,14 @@ namespace QService
         private void Channel_Opened(object sender, EventArgs e)
         {
             Console.WriteLine("Client connected. {0}", connector.Id);
-          
         }
 
         private void Channel_Closed(object sender, EventArgs e)
         {
             Console.WriteLine("Client disconnected. {0}", connector.Id);
-            foreach(var security in registeredSecurityQuery)
-            {
-                connector.UnRegisterSecurity(security);
-            }
             connector.Disconnect();
+            connector = null;
+            listener.IsRunned = false;
         }
 
         ~DataFeed()
@@ -74,27 +75,30 @@ namespace QService
             Console.WriteLine("Destroy {0}", connector.Id);
         }
 
-        int c = 0;
         private void Connector_Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
         {
-            foreach (var change in changes)
+            if (info.IsChannelOpened(operationContext))
             {
-                if (change.Key == StockSharp.Messages.Level1Fields.BestAskPrice || change.Key == StockSharp.Messages.Level1Fields.BestBidPrice)
+                foreach (var change in changes)
                 {
-                    var level1 = new Level1
+                    if (change.Key == StockSharp.Messages.Level1Fields.BestAskPrice || change.Key == StockSharp.Messages.Level1Fields.BestBidPrice)
                     {
-                        BestAskPrice = (decimal)change.Value,
-                        BestBidPrice = (decimal)change.Value,
-                        Security = security
-                    };
+                        var level1 = new Level1
+                        {
+                            BestAskPrice = (decimal)change.Value,
+                            BestBidPrice = (decimal)change.Value,
+                            Security = security
+                        };
 
-                    try
-                    {
-                        Callback.NewLevel1Values(level1);
-                    }
-                    catch(Exception e)
-                    {
-                        connector.UnRegisterSecurity(security);
+                        try
+                        {
+                            Callback.NewLevel1Values(level1);
+                        }
+                        catch (Exception e)
+                        {
+                            if (connector != null)
+                                connector.UnRegisterSecurity(security);
+                        }
                     }
                 }
             }
@@ -111,7 +115,6 @@ namespace QService
                     Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
                 };
 
-                registeredSecurityQuery.Enqueue(criteria);
                 connector.RegisterSecurity(criteria);
                 Console.WriteLine("Register SECURITY {0}, {1}", connector.ConnectionState, connector.Id);
             }
@@ -182,14 +185,7 @@ namespace QService
                 }
             };
 
-            try
-            {
-                Callback.NewSecurities(list);
-            }
-            catch
-            {
-
-            }
+            Callback.NewSecurities(list);
         }
 
         public List<ExchangeBoard> GetExchangeBoards(string exchangeBoardCode)
@@ -242,13 +238,6 @@ namespace QService
             {
                 return operationContext.GetCallbackChannel<IDataFeedCallback>();
             }
-        }
-
-        //Метод запускается новом потоке и регистрирует инструмент для получение Level1
-        public void RegisterSecurity(object security)
-        {
-            Console.WriteLine("Register in new thread");
-            connector.RegisterSecurity((StockSharp.BusinessEntities.Security)security);
         }
     }
 }
