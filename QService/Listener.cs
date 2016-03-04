@@ -16,30 +16,20 @@ namespace QService
     public class Listener
     {
         public Queue<RequestCandles> requestCandlesQueue;   //Очередь запросов на получение свечек по указанным инструментам
-        public IQFeedTrader connector;
+        //public IQFeedTrader connector;
         public bool IsRunned;
+        private static object locker = new object();
 
-        private List<IQFeedTrader> connectors;
-        private const int conCount = 3;   //Количество коннекторов для обработки запросов на получение свечек
         private OperationContext operationContext;
         private Info info;
 
         public Listener(IQFeedTrader connector, OperationContext operationContext)
         {
-            this.connector = connector;
+            //this.connector = connector;
             this.operationContext = operationContext;
             requestCandlesQueue = new Queue<RequestCandles>();
             info = new Info();
             IsRunned = true;
-
-            connectors = new List<IQFeedTrader>();
-
-            for (int i = 0; i < conCount; i++)
-            {
-                var con = new IQFeedTrader();
-                con.Connect();
-                connectors.Add(con);
-            }
         }
 
         public void CandlesQueueStart()
@@ -47,15 +37,26 @@ namespace QService
             bool isSuccess;
             List<Candle> candlesStake = new List<Candle>();
 
+            var connector = new IQFeedTrader();
+            connector.Connect();
+
+            Thread.Sleep(1000);
+
             while (IsRunned)    //Постоянно следим за очередью запросов
             {
                 Thread.Sleep(10);
-                Console.WriteLine("Connection state: {0} {1} {2}", connectors[0].ConnectionState, connectors[1].ConnectionState, connectors[2].ConnectionState);
+                //Console.WriteLine("Connection state: {0} {1} {2}", connectors[0].ConnectionState, connectors[1].ConnectionState, connectors[2].ConnectionState);
                 if (info.IsChannelOpened(operationContext) && requestCandlesQueue.Count > 0)   //Выполнять код будем если только очередь не пуста и канал связи с клиентом в порядке
                 {
                     try
                     {
-                        var request = requestCandlesQueue.Dequeue();    //Запросы выполняются в порядке очереди
+                        RequestCandles request;
+
+                        lock (locker)
+                        {
+                            request = requestCandlesQueue.Dequeue();    //Запросы выполняются в порядке очереди
+                        }
+
                         var candles = connector.GetHistoricalCandles(request.Security, request.Type, request.TimeFrame, request.From, request.To, out isSuccess);
 
                         if (candles != null && candles.Count() > 0)
@@ -84,7 +85,7 @@ namespace QService
                                 };
                                 candlesStake.Add(rcandle);
                             };
-                            Console.WriteLine("request {0} {1}", requestCandlesQueue.Count, candles.Count());
+                            Console.WriteLine("Queue size: {0}, candles count: {1} from thread {2} {3} {4}", requestCandlesQueue.Count, candles.Count(), Thread.CurrentThread.ManagedThreadId, request.Security.Code, connector.ConnectionState);
                             Callback.NewCandles(candlesStake);
                             candlesStake.Clear();
                         }
@@ -95,7 +96,10 @@ namespace QService
                     }
                 }
             }
-        }     
+
+            connector.Disconnect();
+            connector = null;          
+        }
 
         IDataFeedCallback Callback
         {

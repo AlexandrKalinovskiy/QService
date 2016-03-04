@@ -24,7 +24,7 @@ namespace QService
         private EFDbContext context;
         private Listener listener;
         private const int stakeSize = 500;
-        private Thread thread;
+        private const int conCount = 5;
 
         DataFeed()
         {
@@ -43,8 +43,10 @@ namespace QService
 
             listener = new Listener(connector, operationContext);
 
-            thread = new Thread(listener.CandlesQueueStart);
-            thread.Start();
+            for (int i = 0; i < conCount; i++)
+            {
+                new Thread(listener.CandlesQueueStart).Start();
+            }
 
             connector.Connect();
 
@@ -88,7 +90,8 @@ namespace QService
                     }
                     catch(Exception e)
                     {
-                        connector.UnRegisterSecurity(security);
+                        if (connector != null)
+                            connector.UnRegisterSecurity(security);
                     }
                 }
             }
