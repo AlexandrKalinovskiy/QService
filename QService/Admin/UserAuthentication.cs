@@ -10,7 +10,9 @@ namespace QService.Admin
         {
             var ok = (userName == "Alonso") && (password == "Op2oyxq");
 
-            if(!ok)
+            Console.WriteLine("User authorized!");
+
+            if (!ok)
                 throw new AuthenticationException("Incorrect username or password.");
         }
     }

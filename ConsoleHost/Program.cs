@@ -14,6 +14,7 @@ namespace ConsoleHost
             using (var host = new ServiceHost(typeof(QService.DataFeed)))
             {
                 try {
+                    //var h = host.Credentials.ServiceCertificate.Certificate.HasPrivateKey;
                     host.Open();
                     Console.WriteLine("Server started...");
 

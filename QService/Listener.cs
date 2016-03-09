@@ -6,6 +6,7 @@ using System.ServiceModel;
 using System.Threading;
 using QService.Admin;
 using System;
+using System.Data;
 
 namespace QService
 {
@@ -34,19 +35,15 @@ namespace QService
 
         public void CandlesQueueStart()
         {
-            bool isSuccess;
-            List<Candle> candlesStake = new List<Candle>();
-
             var connector = new IQFeedTrader();
             connector.Connect();
 
-            Thread.Sleep(1000);
+            bool isSuccess;
+            List<Candle> candlesStake = new List<Candle>();
 
             while (IsRunned)    //Постоянно следим за очередью запросов
             {
-                Thread.Sleep(10);
-                //Console.WriteLine("Connection state: {0} {1} {2}", connectors[0].ConnectionState, connectors[1].ConnectionState, connectors[2].ConnectionState);
-                if (info.IsChannelOpened(operationContext) && requestCandlesQueue.Count > 0)   //Выполнять код будем если только очередь не пуста и канал связи с клиентом в порядке
+                if (info.IsChannelOpened(operationContext) && requestCandlesQueue.Count > 0 && connector.ConnectionState == StockSharp.Messages.ConnectionStates.Connected)   //Выполнять код будем если только очередь не пуста и канал связи с клиентом в порядке
                 {
                     try
                     {
@@ -61,6 +58,7 @@ namespace QService
 
                         if (candles != null && candles.Count() > 0)
                         {
+                            int i = 0;
                             foreach (var candle in candles)
                             {
                                 var rcandle = new Entities.Candle
@@ -83,10 +81,12 @@ namespace QService
                                     },
                                     TotalVolume = candle.TotalVolume
                                 };
-                                candlesStake.Add(rcandle);
+                                if(i<10)
+                                    candlesStake.Add(rcandle);
+                                i++;
                             };
                             Console.WriteLine("Queue size: {0}, candles count: {1} from thread {2} {3} {4}", requestCandlesQueue.Count, candles.Count(), Thread.CurrentThread.ManagedThreadId, request.Security.Code, connector.ConnectionState);
-                            Callback.NewCandles(candlesStake);
+                            Callback.NewCandles(candlesStake);                           
                             candlesStake.Clear();
                         }
                     }
@@ -95,8 +95,13 @@ namespace QService
 
                     }
                 }
+                else
+                {
+                    Thread.Sleep(10);
+                }
             }
 
+            Console.WriteLine("Завершение потока {0}", Thread.CurrentThread.ManagedThreadId);
             connector.Disconnect();
             connector = null;          
         }

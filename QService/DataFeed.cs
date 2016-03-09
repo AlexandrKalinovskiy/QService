@@ -24,8 +24,8 @@ namespace QService
         public OperationContext operationContext;
         private EFDbContext context;
         private Listener listener;
-        private const int stakeSize = 500;
-        private const int conCount = 5;
+        private const int stakeSize = 200;
+        private const int conCount = 5; //Количество потоков для обработки исторических данных будет меняться в зависимости от тарифа.
         private Info info; 
 
         DataFeed()
@@ -47,7 +47,10 @@ namespace QService
 
             listener = new Listener(connector, operationContext);
 
-            for (int i = 0; i < conCount; i++)
+            string name = ServiceSecurityContext.Current.PrimaryIdentity.Name;
+
+            //Запускаем вторичные потоки для обработки исторических данных
+            for (int i = 0; i <= conCount; i++)
             {
                 new Thread(listener.CandlesQueueStart).Start();
             }
@@ -185,7 +188,8 @@ namespace QService
                 }
             };
 
-            Callback.NewSecurities(list);
+            Console.WriteLine(operationContext.Channel.State);
+            //Callback.NewSecurities(list);
         }
 
         public List<ExchangeBoard> GetExchangeBoards(string exchangeBoardCode)

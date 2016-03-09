@@ -32,8 +32,5 @@ namespace QService
 
         [OperationContract(IsOneWay = true)]
         void NewCandles(IEnumerable<Candle> candles);
-
-        [OperationContract(IsOneWay = true)]
-        void Test(int i);
     }
 }
