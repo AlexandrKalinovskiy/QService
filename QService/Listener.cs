@@ -58,7 +58,6 @@ namespace QService
 
                         if (candles != null && candles.Count() > 0)
                         {
-                            int i = 0;
                             foreach (var candle in candles)
                             {
                                 var rcandle = new Entities.Candle
@@ -81,9 +80,8 @@ namespace QService
                                     },
                                     TotalVolume = candle.TotalVolume
                                 };
-                                if(i<10)
-                                    candlesStake.Add(rcandle);
-                                i++;
+
+                                candlesStake.Add(rcandle);
                             };
                             Console.WriteLine("Queue size: {0}, candles count: {1} from thread {2} {3} {4}", requestCandlesQueue.Count, candles.Count(), Thread.CurrentThread.ManagedThreadId, request.Security.Code, connector.ConnectionState);
                             Callback.NewCandles(candlesStake);                           

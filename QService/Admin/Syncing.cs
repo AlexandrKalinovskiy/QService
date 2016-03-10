@@ -1,5 +1,4 @@
 ﻿using QService.Concrete;
-using QService.Entities;
 using StockSharp.IQFeed;
 using System;
 using System.Collections.Generic;

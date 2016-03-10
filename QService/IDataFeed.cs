@@ -9,6 +9,9 @@ namespace QService
     [ServiceContract(CallbackContract = typeof(IDataFeedCallback))]
     public interface IDataFeed
     {
+        //[OperationContract(IsInitiating = true)]
+        //void Connect(string userName, string password);
+
         [OperationContract(IsOneWay = true)]
         void GetSecurities(string id, string boardCode);
 
@@ -24,13 +27,13 @@ namespace QService
 
     public interface IDataFeedCallback
     {
-        [OperationContract(IsOneWay = true)]
+        [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
         void NewSecurities(IEnumerable<Security> securities);
 
-        [OperationContract(IsOneWay = true)]
+        [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
         void NewLevel1Values(Level1 level1);
 
-        [OperationContract(IsOneWay = true)]
+        [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
         void NewCandles(IEnumerable<Candle> candles);
     }
 }
