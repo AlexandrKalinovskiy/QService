@@ -1,14 +1,25 @@
-﻿using System;
+﻿using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.EntityFramework;
+using QService.Concrete;
+using System;
 using System.Collections.Generic;
 using System.IdentityModel.Selectors;
-using System.Security.Authentication;
 using System.ServiceModel;
 
 namespace QService.Admin
 {
     public class UserAuthentication : UserNamePasswordValidator
     {
-        List<User> activeUsers = new List<User>();  //Список всех активных пользователей
+        private IdentityContext _identityContext;
+        private UserManager<User> _userManager;
+        private static List<User> _activeUsers;
+
+        public UserAuthentication()
+        {
+            _identityContext = new IdentityContext();
+            _userManager = new UserManager<User>(new UserStore<User>(_identityContext));
+            _activeUsers = new List<User>();
+        }
 
         /// <summary>
         /// Метод принимает имя пользователя и пароль, после чего проверяет в базе на соответствие.
@@ -17,24 +28,41 @@ namespace QService.Admin
         /// <param name="password"></param>
         public override void Validate(string userName, string password)
         {
-            var user = new User
-            {
-                UserName = userName,
-                Password = password
-            };
+            var user = _userManager.FindByName(userName);
 
-            var find = activeUsers.Find(u => u.UserName == userName);
+            Console.WriteLine("Users count {0}", _activeUsers.Count);
 
-            if (find == null)
+            if (user == null)
             {
-                Console.WriteLine("Пользователь авторизован.");
-                activeUsers.Add(user);
+                throw new FaultException("Пользователь не найден.");
             }
             else
             {
-                Console.WriteLine("Пользователь уже подключен");
-                throw new FaultException("Пользователь уже подключен");
-            }              
+                var find = _activeUsers.Find(u => u.Id == user.Id);
+                if(find != null)
+                {
+                    Console.WriteLine("Пользователь уже подключен");
+                    throw new FaultException("Пользователь уже подключен");
+                }
+                else
+                {
+                    SignIn(user);
+                }              
+            }
+        }
+
+        public void SignIn(User user)
+        {
+            _activeUsers.Add(user);
+        }
+
+        public bool SignOut(string userName)
+        {
+            var user = _userManager.FindByName(userName);
+            if(_activeUsers.Remove(user) == true)
+                return true;
+
+            return false;
         }
     }
 }

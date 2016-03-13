@@ -1,5 +1,4 @@
-﻿//using StockSharp.BusinessEntities;
-using StockSharp.IQFeed;
+﻿using StockSharp.IQFeed;
 using System;
 using System.Collections.Generic;
 using System.ServiceModel;
@@ -13,6 +12,9 @@ using StockSharp.Algo.Candles;
 using Ecng.Common;
 using System.ComponentModel;
 using QService.Admin;
+using System.Security.Claims;
+using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace QService
 {
@@ -26,13 +28,15 @@ namespace QService
         private Listener listener;
         private const int stakeSize = 200;
         private const int conCount = 5; //Количество потоков для обработки исторических данных будет меняться в зависимости от тарифа.
-        private Info info; 
+        private Info info;
+        private string _userName;
 
         DataFeed()
         {
             context = new EFDbContext();
 
             operationContext = OperationContext.Current;
+            _userName = operationContext.ServiceSecurityContext.PrimaryIdentity.Name;
             operationContext.Channel.Opened += Channel_Opened;
             operationContext.Channel.Closed += Channel_Closed;
 
@@ -43,7 +47,7 @@ namespace QService
             connector = new IQFeedTrader();
             connector.ValuesChanged += Connector_Level1Changed;
 
-            Console.WriteLine("SID: {0}", operationContext.Channel.SessionId);
+            Console.WriteLine("SID: {0} ", operationContext.Channel.SessionId);
 
             listener = new Listener(connector, operationContext);
 
@@ -60,6 +64,11 @@ namespace QService
             Thread.Sleep(1000);
         }
 
+        private void Channel_Closing(object sender, EventArgs e)
+        {
+
+        }
+
         private void Channel_Opened(object sender, EventArgs e)
         {
             Console.WriteLine("Client connected. {0}", connector.Id);
@@ -71,6 +80,12 @@ namespace QService
             connector.Disconnect();
             connector = null;
             listener.IsRunned = false;
+
+            var userAuth = new UserAuthentication();
+            if (userAuth.SignOut(_userName) == true)
+            {
+                Console.WriteLine("User {0} is delete", _userName);
+            }
         }
 
         ~DataFeed()
@@ -125,6 +140,9 @@ namespace QService
 
         public void GetSecurities(string ticker, string exchangeBoardCode)
         {
+
+
+
             var securities = new List<Security>();
 
             if (ticker != null && ticker != string.Empty)   //Если указан тикер бумаги
