@@ -19,7 +19,7 @@ using Microsoft.AspNet.Identity.EntityFramework;
 namespace QService
 {
     // ПРИМЕЧАНИЕ. Команду "Переименовать" в меню "Рефакторинг" можно использовать для одновременного изменения имени класса "DataFeed" в коде и файле конфигурации.
-    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Reentrant)]
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Single)]
     public class DataFeed : IDataFeed
     {
         private IQFeedTrader connector;
@@ -29,6 +29,7 @@ namespace QService
         private const int stakeSize = 200;
         private const int conCount = 5; //Количество потоков для обработки исторических данных будет меняться в зависимости от тарифа.
         private Info info;
+        private UserAuthentication userAuth;
         private string _userName;
 
         DataFeed()
@@ -36,13 +37,15 @@ namespace QService
             context = new EFDbContext();
 
             operationContext = OperationContext.Current;
-            _userName = operationContext.ServiceSecurityContext.PrimaryIdentity.Name;
             operationContext.Channel.Opened += Channel_Opened;
             operationContext.Channel.Closed += Channel_Closed;
+            operationContext.Channel.Faulted += Channel_Faulted;
 
             info = new Info();
 
-            var secContext = ServiceSecurityContext.Current;
+            userAuth = new UserAuthentication();
+            _userName = operationContext.ServiceSecurityContext.PrimaryIdentity.Name;
+            userAuth.SignIn(_userName);
 
             connector = new IQFeedTrader();
             connector.ValuesChanged += Connector_Level1Changed;
@@ -50,8 +53,6 @@ namespace QService
             Console.WriteLine("SID: {0} ", operationContext.Channel.SessionId);
 
             listener = new Listener(connector, operationContext);
-
-            string name = ServiceSecurityContext.Current.PrimaryIdentity.Name;
 
             //Запускаем вторичные потоки для обработки исторических данных
             for (int i = 0; i <= conCount; i++)
@@ -64,9 +65,13 @@ namespace QService
             Thread.Sleep(1000);
         }
 
-        private void Channel_Closing(object sender, EventArgs e)
+        private void Channel_Faulted(object sender, EventArgs e)
         {
-
+            var userAuth = new UserAuthentication();
+            if (userAuth.SignOut(_userName) == true)
+            {
+                Console.WriteLine("User {0} is delete", _userName);
+            }
         }
 
         private void Channel_Opened(object sender, EventArgs e)
@@ -81,7 +86,7 @@ namespace QService
             connector = null;
             listener.IsRunned = false;
 
-            var userAuth = new UserAuthentication();
+            userAuth = new UserAuthentication();
             if (userAuth.SignOut(_userName) == true)
             {
                 Console.WriteLine("User {0} is delete", _userName);
@@ -91,6 +96,11 @@ namespace QService
         ~DataFeed()
         {
             Console.WriteLine("Destroy {0}", connector.Id);
+        }
+
+        public void Connect()
+        {
+
         }
 
         private void Connector_Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)

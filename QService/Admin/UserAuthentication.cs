@@ -21,6 +21,11 @@ namespace QService.Admin
             _activeUsers = new List<User>();
         }
 
+        ~UserAuthentication()
+        {
+            Console.WriteLine("Destroy");
+        }
+
         /// <summary>
         /// Метод принимает имя пользователя и пароль, после чего проверяет в базе на соответствие.
         /// </summary>
@@ -39,20 +44,17 @@ namespace QService.Admin
             else
             {
                 var find = _activeUsers.Find(u => u.Id == user.Id);
-                if(find != null)
+                if (find != null)
                 {
                     Console.WriteLine("Пользователь уже подключен");
                     throw new FaultException("Пользователь уже подключен");
                 }
-                else
-                {
-                    SignIn(user);
-                }              
             }
         }
 
-        public void SignIn(User user)
+        public void SignIn(string userName)
         {
+            var user = _userManager.FindByName(userName);
             _activeUsers.Add(user);
         }
 

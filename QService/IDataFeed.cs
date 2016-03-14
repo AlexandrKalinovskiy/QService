@@ -6,22 +6,22 @@ using System.ServiceModel;
 namespace QService
 {
     // ПРИМЕЧАНИЕ. Команду "Переименовать" в меню "Рефакторинг" можно использовать для одновременного изменения имени интерфейса "IDataFeed" в коде и файле конфигурации.
-    [ServiceContract(CallbackContract = typeof(IDataFeedCallback))]
+    [ServiceContract(CallbackContract = typeof(IDataFeedCallback), SessionMode = SessionMode.Required)]
     public interface IDataFeed
     {
-        //[OperationContract(IsInitiating = true)]
-        //void Connect(string userName, string password);
+        [OperationContract(IsInitiating = true)]
+        void Connect();
 
-        [OperationContract(IsOneWay = true)]
+        [OperationContract(IsOneWay = true, IsInitiating = false)]
         void GetSecurities(string id, string boardCode);
 
         [OperationContract]
         List<ExchangeBoard> GetExchangeBoards(string code);
 
-        [OperationContract(IsOneWay = true)]
+        [OperationContract(IsOneWay = true, IsInitiating = false)]
         void SubscribeLevel1(Security security);
 
-        [OperationContract(IsOneWay = true)]
+        [OperationContract(IsOneWay = true, IsInitiating = false)]
         void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
     }
 
