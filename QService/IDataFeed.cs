@@ -15,7 +15,7 @@ namespace QService
         [OperationContract(IsOneWay = true, IsInitiating = false)]
         void GetSecurities(string id, string boardCode);
 
-        [OperationContract]
+        [OperationContract(IsOneWay = true, IsInitiating = false)]
         List<ExchangeBoard> GetExchangeBoards(string code);
 
         [OperationContract(IsOneWay = true, IsInitiating = false)]

@@ -65,6 +65,7 @@ namespace QService
             Thread.Sleep(1000);
         }
 
+        //Срабатывает при обрыве канала связи с клиентом
         private void Channel_Faulted(object sender, EventArgs e)
         {
             var userAuth = new UserAuthentication();
@@ -103,6 +104,13 @@ namespace QService
 
         }
 
+        /// <summary>
+        /// Метод срабатывает при поступлении новых значений Level1
+        /// </summary>
+        /// <param name="security"></param>
+        /// <param name="changes"></param>
+        /// <param name="arg3"></param>
+        /// <param name="arg4"></param>
         private void Connector_Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
         {
             if (info.IsChannelOpened(operationContext))
@@ -132,6 +140,11 @@ namespace QService
             }
         }
 
+
+        /// <summary>
+        /// Могут вызывать пользователи только с ролями "Level1" и "Level2"
+        /// </summary>
+        /// <param name="security"></param>
         public void SubscribeLevel1(Security security)
         {
             if (security != null)
@@ -148,11 +161,14 @@ namespace QService
             }
         }
 
+
+        /// <summary>
+        /// Могут вызывать пользователи с ролями "Basic", "Level1" и "Level2"
+        /// </summary>
+        /// <param name="ticker"></param>
+        /// <param name="exchangeBoardCode"></param>        
         public void GetSecurities(string ticker, string exchangeBoardCode)
         {
-
-
-
             var securities = new List<Security>();
 
             if (ticker != null && ticker != string.Empty)   //Если указан тикер бумаги
@@ -220,6 +236,11 @@ namespace QService
             //Callback.NewSecurities(list);
         }
 
+        /// <summary>
+        /// Получение торговых площадок. Для роле "Basic", "Level1" и "Level2"
+        /// </summary>
+        /// <param name="exchangeBoardCode"></param>
+        /// <returns></returns>
         public List<ExchangeBoard> GetExchangeBoards(string exchangeBoardCode)
         {
             var boards = context.ExchangeBoards.Where(b => b.Code == exchangeBoardCode).ToList();
@@ -231,7 +252,7 @@ namespace QService
         }
 
         /// <summary>
-        /// Метод возвращает исторические свечки с интервалом от секунды до месяца.
+        /// Метод возвращает исторические свечки с интервалом от секунды до месяца. Для ролей "Basic", "Level1" и "Level2"
         /// </summary>
         /// <param name="security">Инструмент</param>
         /// <param name="from">С какой даты и времени начинать закачку</param>

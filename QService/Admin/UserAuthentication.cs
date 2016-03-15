@@ -18,6 +18,7 @@ namespace QService.Admin
         {
             _identityContext = new IdentityContext();
             _userManager = new UserManager<User>(new UserStore<User>(_identityContext));
+            var roleManager = new RoleManager<IdentityRole>(new RoleStore<IdentityRole>(_identityContext));
             _activeUsers = new List<User>();
         }
 
@@ -27,7 +28,8 @@ namespace QService.Admin
         }
 
         /// <summary>
-        /// Метод принимает имя пользователя и пароль, после чего проверяет в базе на соответствие.
+        /// Метод принимает имя пользователя и пароль, после чего проверяет в базе на соответствие. Если пользователь найден в базе и еще не подключен к сервису, 
+        /// срабатывает создание экземпляра и установление сеанса связи.
         /// </summary>
         /// <param name="userName"></param>
         /// <param name="password"></param>
@@ -52,12 +54,23 @@ namespace QService.Admin
             }
         }
 
+
+        /// <summary>
+        /// Метод регистрирует активного пользователя
+        /// </summary>
+        /// <param name="userName"></param>
         public void SignIn(string userName)
         {
             var user = _userManager.FindByName(userName);
             _activeUsers.Add(user);
         }
 
+
+        /// <summary>
+        /// Метод удаляет активного пользователя из списка
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <returns></returns>
         public bool SignOut(string userName)
         {
             var user = _userManager.FindByName(userName);
