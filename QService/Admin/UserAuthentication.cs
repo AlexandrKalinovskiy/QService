@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Selectors;
 using System.ServiceModel;
+using System.Threading.Tasks;
 
 namespace QService.Admin
 {
@@ -76,6 +77,17 @@ namespace QService.Admin
             var user = _userManager.FindByName(userName);
             if(_activeUsers.Remove(user) == true)
                 return true;
+
+            return false;
+        }
+
+        public bool IsInRole(string userName, string roleName)
+        {
+            var user = _userManager.FindByName(userName);
+            if (_userManager.IsInRole(user.Id, roleName))
+            {
+                return true;
+            }
 
             return false;
         }

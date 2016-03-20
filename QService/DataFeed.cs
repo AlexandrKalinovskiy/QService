@@ -22,14 +22,14 @@ namespace QService
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Single)]
     public class DataFeed : IDataFeed
     {
-        private IQFeedTrader connector;
-        public OperationContext operationContext;
+        private IQFeedTrader _connector;
+        public static OperationContext operationContext;
         private EFDbContext context;
         private Listener listener;
         private const int stakeSize = 200;
-        private const int conCount = 5; //Количество потоков для обработки исторических данных будет меняться в зависимости от тарифа.
+        private const int conCount = 10; //Количество потоков для обработки исторических данных будет меняться в зависимости от тарифа.
         private Info info;
-        private UserAuthentication userAuth;
+        private UserAuthentication _userAuth;
         private string _userName;
 
         DataFeed()
@@ -43,16 +43,16 @@ namespace QService
 
             info = new Info();
 
-            userAuth = new UserAuthentication();
+            _userAuth = new UserAuthentication();
             _userName = operationContext.ServiceSecurityContext.PrimaryIdentity.Name;
-            userAuth.SignIn(_userName);
+            _userAuth.SignIn(_userName);
 
-            connector = new IQFeedTrader();
-            connector.ValuesChanged += Connector_Level1Changed;
+            _connector = new IQFeedTrader();
+            _connector.ValuesChanged += _connector_Level1Changed;
 
             Console.WriteLine("SID: {0} ", operationContext.Channel.SessionId);
 
-            listener = new Listener(connector, operationContext);
+            listener = new Listener(operationContext);
 
             //Запускаем вторичные потоки для обработки исторических данных
             for (int i = 0; i <= conCount; i++)
@@ -60,7 +60,7 @@ namespace QService
                 new Thread(listener.CandlesQueueStart).Start();
             }
 
-            connector.Connect();
+            _connector.Connect();
 
             Thread.Sleep(1000);
         }
@@ -77,18 +77,18 @@ namespace QService
 
         private void Channel_Opened(object sender, EventArgs e)
         {
-            Console.WriteLine("Client connected. {0}", connector.Id);
+            Console.WriteLine("Client connected. {0}", _connector.Id);
         }
 
         private void Channel_Closed(object sender, EventArgs e)
         {
-            Console.WriteLine("Client disconnected. {0}", connector.Id);
-            connector.Disconnect();
-            connector = null;
+            Console.WriteLine("Client disconnected. {0}", _connector.Id);
+            _connector.Disconnect();
+            _connector = null;
             listener.IsRunned = false;
 
-            userAuth = new UserAuthentication();
-            if (userAuth.SignOut(_userName) == true)
+            _userAuth = new UserAuthentication();
+            if (_userAuth.SignOut(_userName) == true)
             {
                 Console.WriteLine("User {0} is delete", _userName);
             }
@@ -96,7 +96,7 @@ namespace QService
 
         ~DataFeed()
         {
-            Console.WriteLine("Destroy {0}", connector.Id);
+            Console.WriteLine("Destroy {0}", _connector.Id);
         }
 
         public void Connect()
@@ -111,7 +111,7 @@ namespace QService
         /// <param name="changes"></param>
         /// <param name="arg3"></param>
         /// <param name="arg4"></param>
-        private void Connector_Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
+        private void _connector_Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
         {
             if (info.IsChannelOpened(operationContext))
             {
@@ -132,8 +132,8 @@ namespace QService
                         }
                         catch (Exception e)
                         {
-                            if (connector != null)
-                                connector.UnRegisterSecurity(security);
+                            if (_connector != null)
+                                _connector.UnRegisterSecurity(security);
                         }
                     }
                 }
@@ -147,17 +147,20 @@ namespace QService
         /// <param name="security"></param>
         public void SubscribeLevel1(Security security)
         {
-            if (security != null)
+            if (_userAuth.IsInRole(_userName, "Level1"))
             {
-                var criteria = new StockSharp.BusinessEntities.Security
+                if (security != null)
                 {
-                    Code = security.Ticker,
-                    Id = security.Code,
-                    Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
-                };
-
-                connector.RegisterSecurity(criteria);
-                Console.WriteLine("Register SECURITY {0}, {1}", connector.ConnectionState, connector.Id);
+                    var criteria = new StockSharp.BusinessEntities.Security
+                    {
+                        Code = security.Ticker,
+                        Id = security.Code,
+                        Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
+                    };
+                    //Регистрируем инструмент для получения Level1
+                    _connector.RegisterSecurity(criteria);
+                    Console.WriteLine("Register SECURITY {0}, {1}", _connector.ConnectionState, _connector.Id);
+                }
             }
         }
 
@@ -232,8 +235,7 @@ namespace QService
                 }
             };
 
-            Console.WriteLine(operationContext.Channel.State);
-            //Callback.NewSecurities(list);
+            Callback.NewSecurities(list);
         }
 
         /// <summary>
@@ -241,15 +243,15 @@ namespace QService
         /// </summary>
         /// <param name="exchangeBoardCode"></param>
         /// <returns></returns>
-        public List<ExchangeBoard> GetExchangeBoards(string exchangeBoardCode)
-        {
-            var boards = context.ExchangeBoards.Where(b => b.Code == exchangeBoardCode).ToList();
+        //public List<ExchangeBoard> GetExchangeBoards(string exchangeBoardCode)
+        //{
+        //    var boards = context.ExchangeBoards.Where(b => b.Code == exchangeBoardCode).ToList();
 
-            if (boards == null)
-                return context.ExchangeBoards.ToList();
+        //    if (boards == null)
+        //        return context.ExchangeBoards.ToList();
 
-            return boards;
-        }
+        //    return boards;
+        //}
 
         /// <summary>
         /// Метод возвращает исторические свечки с интервалом от секунды до месяца. Для ролей "Basic", "Level1" и "Level2"
@@ -282,7 +284,14 @@ namespace QService
                 TimeFrame = timeFrame
             };
 
+            Console.WriteLine("GetHistoricalCandles {0}", operationContext.Channel.State);
+
             listener.requestCandlesQueue.Enqueue(requestCandlies);
+        }
+
+        public void GetExchangeBoards(string code)
+        {
+            throw new NotImplementedException();
         }
 
         IDataFeedCallback Callback

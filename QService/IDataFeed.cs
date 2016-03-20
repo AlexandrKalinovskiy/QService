@@ -16,7 +16,7 @@ namespace QService
         void GetSecurities(string id, string boardCode);
 
         [OperationContract(IsOneWay = true, IsInitiating = false)]
-        List<ExchangeBoard> GetExchangeBoards(string code);
+        void GetExchangeBoards(string code);
 
         [OperationContract(IsOneWay = true, IsInitiating = false)]
         void SubscribeLevel1(Security security);
