@@ -13,7 +13,7 @@ namespace QService.Admin
     {
         private IdentityContext _identityContext;
         private UserManager<User> _userManager;
-        private static List<User> _activeUsers;
+        public static List<User> _activeUsers;
 
         public UserAuthentication()
         {
@@ -21,11 +21,12 @@ namespace QService.Admin
             _userManager = new UserManager<User>(new UserStore<User>(_identityContext));
             var roleManager = new RoleManager<IdentityRole>(new RoleStore<IdentityRole>(_identityContext));
             _activeUsers = new List<User>();
+            Console.WriteLine("CONNECT NEW USER");
         }
 
         ~UserAuthentication()
         {
-            Console.WriteLine("Destroy");
+            Console.WriteLine("Destroy, active users {0}", _activeUsers.Count);
         }
 
         /// <summary>
@@ -46,8 +47,7 @@ namespace QService.Admin
             }
             else
             {
-                var find = _activeUsers.Find(u => u.Id == user.Id);
-                if (find != null)
+                if (user.Active)
                 {
                     Console.WriteLine("Пользователь уже подключен");
                     throw new FaultException("Пользователь уже подключен");
@@ -63,7 +63,8 @@ namespace QService.Admin
         public void SignIn(string userName)
         {
             var user = _userManager.FindByName(userName);
-            _activeUsers.Add(user);
+            user.Active = true;
+            _userManager.Update(user);
         }
 
 
@@ -75,7 +76,10 @@ namespace QService.Admin
         public bool SignOut(string userName)
         {
             var user = _userManager.FindByName(userName);
-            if(_activeUsers.Remove(user) == true)
+            user.Active = false;
+            var result = _userManager.Update(user);
+
+            if (result.Succeeded)
                 return true;
 
             return false;

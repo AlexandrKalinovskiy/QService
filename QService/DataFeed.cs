@@ -22,12 +22,13 @@ namespace QService
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Single)]
     public class DataFeed : IDataFeed
     {
+        private OperationContext operationContext;
+
         private IQFeedTrader _connector;
-        public static OperationContext operationContext;
         private EFDbContext context;
         private Listener listener;
-        private const int stakeSize = 200;
-        private const int conCount = 10; //Количество потоков для обработки исторических данных будет меняться в зависимости от тарифа.
+        private static int stakeSize = 200;
+        private static int conCount = 5; //Количество потоков для обработки исторических данных будет меняться в зависимости от тарифа.
         private Info info;
         private UserAuthentication _userAuth;
         private string _userName;
@@ -96,7 +97,7 @@ namespace QService
 
         ~DataFeed()
         {
-            Console.WriteLine("Destroy {0}", _connector.Id);
+            Console.WriteLine("Destroy instance {0}", _connector.Id);
         }
 
         public void Connect()
@@ -239,21 +240,6 @@ namespace QService
         }
 
         /// <summary>
-        /// Получение торговых площадок. Для роле "Basic", "Level1" и "Level2"
-        /// </summary>
-        /// <param name="exchangeBoardCode"></param>
-        /// <returns></returns>
-        //public List<ExchangeBoard> GetExchangeBoards(string exchangeBoardCode)
-        //{
-        //    var boards = context.ExchangeBoards.Where(b => b.Code == exchangeBoardCode).ToList();
-
-        //    if (boards == null)
-        //        return context.ExchangeBoards.ToList();
-
-        //    return boards;
-        //}
-
-        /// <summary>
         /// Метод возвращает исторические свечки с интервалом от секунды до месяца. Для ролей "Basic", "Level1" и "Level2"
         /// </summary>
         /// <param name="security">Инструмент</param>
@@ -284,8 +270,7 @@ namespace QService
                 TimeFrame = timeFrame
             };
 
-            Console.WriteLine("GetHistoricalCandles {0}", operationContext.Channel.State);
-
+            //Listener.requestCandlesQueue.Enqueue(requestCandlies);
             listener.requestCandlesQueue.Enqueue(requestCandlies);
         }
 
