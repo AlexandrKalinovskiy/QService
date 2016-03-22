@@ -129,6 +129,7 @@
     <Compile Include="Admin\Info.cs" />
     <Compile Include="Admin\Syncing.cs" />
     <Compile Include="Admin\UserAuthentication.cs" />
+    <Compile Include="Concrete\Connectors.cs" />
     <Compile Include="Concrete\EFDbContext.cs" />
     <Compile Include="Concrete\IdentityDbContext.cs" />
     <Compile Include="DataFeed.cs" />
