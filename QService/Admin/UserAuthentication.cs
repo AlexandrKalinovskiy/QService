@@ -2,6 +2,7 @@
 using Microsoft.AspNet.Identity.EntityFramework;
 using QService.Concrete;
 using System;
+using System.Collections.Generic;
 using System.IdentityModel.Selectors;
 using System.ServiceModel;
 using static QService.Concrete.Connectors;
@@ -11,13 +12,13 @@ namespace QService.Admin
     public class UserAuthentication : UserNamePasswordValidator
     {
         private IdentityContext _identityContext;
-        private UserManager<User> _userManager;
+        private UManager _uManager;
         private static bool _isCreated = false;
 
         public UserAuthentication()
         {
             _identityContext = new IdentityContext();
-            _userManager = new UserManager<User>(new UserStore<User>(_identityContext));
+            _uManager = new UManager();
             var roleManager = new RoleManager<IdentityRole>(new RoleStore<IdentityRole>(_identityContext));
             Console.WriteLine("UserAuthentication created");
             if (!_isCreated)
@@ -41,48 +42,20 @@ namespace QService.Admin
         /// <param name="password"></param>
         public async override void Validate(string userName, string password)
         {
-            var user = await _userManager.FindByNameAsync(userName);
+            var user = _uManager.FindByName(userName);
 
             if (user == null)
             {
                 throw new FaultException("Пользователь не найден.");
             }
             else
-            {
-                if (user.Active)
+            {           
+                if (!await _uManager.SignIn(userName))
                 {
                     Console.WriteLine("Пользователь уже подключен");
                     throw new FaultException("Пользователь уже подключен");
                 }
             }
-        }
-
-        /// <summary>
-        /// Метод регистрирует активного пользователя
-        /// </summary>
-        /// <param name="userName"></param>
-        public void SignIn(string userName)
-        {
-            var user = _userManager.FindByName(userName);
-            user.Active = true;
-            _userManager.Update(user);
-        }
-
-        /// <summary>
-        /// Метод удаляет активного пользователя из списка
-        /// </summary>
-        /// <param name="userName"></param>
-        /// <returns></returns>
-        public bool SignOut(string userName)
-        {
-            var user = _userManager.FindByName(userName);
-            user.Active = false;
-            var result = _userManager.Update(user);
-
-            if (result.Succeeded)
-                return true;
-
-            return false;
         }
 
         /// <summary>
@@ -93,10 +66,10 @@ namespace QService.Admin
         /// <returns></returns>
         public bool IsInRole(string userName, string[] roles)
         {
-            var user = _userManager.FindByName(userName);
+            var user = _uManager.FindByName(userName);
             foreach (var role in roles)
             {
-                if (_userManager.IsInRole(user.Id, role))
+                if (_uManager.IsInRole(user.Id, role))
                 {
                     return true;
                 }

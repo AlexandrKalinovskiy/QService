@@ -1,4 +1,7 @@
-﻿using StockSharp.IQFeed;
+﻿using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.EntityFramework;
+using QService.Admin;
+using StockSharp.IQFeed;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -8,34 +11,47 @@ namespace QService.Concrete
 {
     public static class Connectors
     {
-        private static List<Connector> connectors;
-        private const int connectorsCount = 25;
-        private static Connector connector;
+        private static IdentityContext _identityContext;
+        private static UserManager<User> _userManager;
+        private static List<Connector> _connectors;
+        private const int _connectorsCount = 10;
+        private static Connector _connector;
+
 
         //Конструктор выполнится только один раз при первом созданиии класса
         static Connectors()
         {
-            Console.WriteLine("Connectors created");
-            connectors = new List<Connector>();
-            for (int i = 0; i < connectorsCount; i++)
+            _identityContext = new IdentityContext();
+            _userManager = new UserManager<User>(new UserStore<User>(_identityContext));
+
+            Console.WriteLine("Connectors creating");
+            _connectors = new List<Connector>();
+            for (int i = 0; i < _connectorsCount; i++)
             {
-                connector = new Connector
+                _connector = new Connector
                 {
                     IsAvialable = true
                 };
-                connector.Connect();
+                _connector.Connect();
                 Thread.Sleep(500);
-                connectors.Add(connector);
+                _connectors.Add(_connector);
             }
 
-            new Task(AvialableCount).Start();
-        }   
+            Console.WriteLine("Connectors created");          
 
+            new Task(AvialableCount).Start();   //Запуск задачи мониторинга пула коннекторов
+        }         
+
+        /// <summary>
+        /// Метод возвращает свободный от работы коннектор.
+        /// Выполняется до тех пор, пока не будет найдет свободный коннектор.
+        /// </summary>
+        /// <returns></returns>
         public static Connector GetAvialableConnector()
         {
             while (true)
             {
-                foreach (var connector in connectors)
+                foreach (var connector in _connectors)
                 {
                     if (connector.IsAvialable)
                     {
@@ -43,15 +59,20 @@ namespace QService.Concrete
                         return connector;
                     }
                 }
-                Thread.Sleep(10);
+                Thread.Sleep(5);
             }
         }
 
+        /// <summary>
+        /// Метод освобождает указанный коннектор.
+        /// </summary>
+        /// <param name="connector"></param>
         public static void FreeConnector(Connector connector)
         {
             connector.IsAvialable = true;
         }
 
+        //Вспомогательный класс. Наследуется от IQFeedTrader.
         public class Connector: IQFeedTrader
         {
             public bool IsAvialable { get; set; }
@@ -65,7 +86,7 @@ namespace QService.Concrete
             int failed = 0;
             while(true)
             {
-                foreach(var con in connectors)
+                foreach(var con in _connectors)
                 {
                     if(con.IsAvialable)
                         free++;

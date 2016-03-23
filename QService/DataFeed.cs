@@ -15,7 +15,7 @@ namespace QService
 {
     // ПРИМЕЧАНИЕ. Команду "Переименовать" в меню "Рефакторинг" можно использовать для одновременного изменения имени класса "DataFeed" в коде и файле конфигурации.
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.PerSession, ConcurrencyMode = ConcurrencyMode.Single)]
-    public class DataFeed : IDataFeed
+    public class DataFeed : IDataFeed, IDisposable
     {
         private OperationContext operationContext;
 
@@ -23,10 +23,11 @@ namespace QService
         private EFDbContext context;
         private Listener listener;
         private static int stakeSize = 200;
-        private static int conCount = 5; //Количество потоков для обработки исторических данных будет меняться в зависимости от тарифа.
+        private static int conCount = 3; //Количество потоков для обработки исторических данных будет меняться в зависимости от тарифа. 3 - Basic
         private Info info;
         private UserAuthentication _userAuth;
         private string _userName;
+        private UManager _uManager;
 
         DataFeed()
         {
@@ -38,10 +39,10 @@ namespace QService
             operationContext.Channel.Faulted += Channel_Faulted;
 
             info = new Info();
+            _uManager = new UManager();
 
             _userAuth = new UserAuthentication();
             _userName = operationContext.ServiceSecurityContext.PrimaryIdentity.Name;
-            _userAuth.SignIn(_userName);
 
             _connector = GetAvialableConnector();
             _connector.ValuesChanged += _connector_Level1Changed;
@@ -53,22 +54,21 @@ namespace QService
             //Запускаем вторичные потоки для обработки исторических данных
             for (int i = 0; i <= conCount; i++)
             {
-                //new Thread(listener.CandlesQueueStart).Start();
                 new Task(listener.CandlesQueueStart).Start();
             }
         }
 
         //Срабатывает при обрыве канала связи с клиентом
-        private void Channel_Faulted(object sender, EventArgs e)
+        private async void Channel_Faulted(object sender, EventArgs e)
         {
             var userAuth = new UserAuthentication();
-            if (userAuth.SignOut(_userName) == true)
+            if (await _uManager.SignOut(_userName))
             {
                 Console.WriteLine("User {0} is delete", _userName);
             }
 
             FreeConnector(_connector);  //Освободить коннектор
-            listener.IsRunned = false;
+            listener.IsRunned = false;  //Завершить работу вторичных потоков
         }
 
         private void Channel_Opened(object sender, EventArgs e)
@@ -76,14 +76,14 @@ namespace QService
             Console.WriteLine("Client connected. {0}", _connector.Id);
         }
 
-        private void Channel_Closed(object sender, EventArgs e)
+        private async void Channel_Closed(object sender, EventArgs e)
         {
             Console.WriteLine("Client disconnected. {0}", _connector.Id);
-            FreeConnector(_connector);
-            listener.IsRunned = false;
+            FreeConnector(_connector);  //Освободить коннектор
+            listener.IsRunned = false;  //Завершить работу вторичных потоков
 
             _userAuth = new UserAuthentication();
-            if (_userAuth.SignOut(_userName) == true)
+            if (await _uManager.SignOut(_userName))
             {
                 Console.WriteLine("User {0} is delete", _userName);
             }
@@ -96,7 +96,7 @@ namespace QService
 
         public void Connect()
         {
-
+         
         }
 
         /// <summary>
@@ -281,6 +281,12 @@ namespace QService
         public void GetExchangeBoards(string code)
         {
             throw new NotImplementedException();
+        }
+
+        public void Dispose()
+        {
+            FreeConnector(_connector);  //Осовободить коннектор
+            Console.WriteLine("Dispose instance {0}", _connector.Id);
         }
 
         IDataFeedCallback Callback

@@ -124,7 +124,8 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Admin\User.cs" />
+    <Compile Include="Admin\UManager.cs" />
+    <Compile Include="Entities\User.cs" />
     <Compile Include="Admin\Info.cs" />
     <Compile Include="Admin\Syncing.cs" />
     <Compile Include="Admin\UserAuthentication.cs" />
