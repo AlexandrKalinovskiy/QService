@@ -14,7 +14,7 @@ namespace QService.Concrete
         private static IdentityContext _identityContext;
         private static UserManager<User> _userManager;
         private static List<Connector> _connectors;
-        private const int _connectorsCount = 10;
+        private const int _connectorsCount = 3;
         private static Connector _connector;
 
 

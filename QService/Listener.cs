@@ -27,7 +27,7 @@ namespace QService
         {
             this.operationContext = operationContext;
             requestCandlesQueue = new Queue<RequestCandles>();
-            info = new Info();         
+            info = new Info();
 
             IsRunned = true;
         }

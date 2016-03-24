@@ -1,8 +1,6 @@
-﻿using StockSharp.IQFeed;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ServiceModel;
-using System.Threading;
 using System.Linq;
 using QService.Entities;
 using QService.Concrete;
@@ -10,6 +8,8 @@ using StockSharp.Algo.Candles;
 using QService.Admin;
 using static QService.Concrete.Connectors;
 using System.Threading.Tasks;
+using Microsoft.AspNet.Identity;
+using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace QService
 {
@@ -27,6 +27,7 @@ namespace QService
         private Info info;
         private UserAuthentication _userAuth;
         private string _userName;
+        private User _user;
         private UManager _uManager;
 
         DataFeed()
@@ -39,7 +40,9 @@ namespace QService
             operationContext.Channel.Faulted += Channel_Faulted;
 
             info = new Info();
-            _uManager = new UManager();
+            _uManager = new UManager(new UserStore<User>(new IdentityContext()));
+ 
+            var test = new UserManager<User>(new UserStore<User>(new IdentityContext()));      
 
             _userAuth = new UserAuthentication();
             _userName = operationContext.ServiceSecurityContext.PrimaryIdentity.Name;
@@ -59,13 +62,10 @@ namespace QService
         }
 
         //Срабатывает при обрыве канала связи с клиентом
-        private async void Channel_Faulted(object sender, EventArgs e)
+        private void Channel_Faulted(object sender, EventArgs e)
         {
             var userAuth = new UserAuthentication();
-            if (await _uManager.SignOut(_userName))
-            {
-                Console.WriteLine("User {0} is delete", _userName);
-            }
+            _uManager.SignOutAsync(_userName);
 
             FreeConnector(_connector);  //Освободить коннектор
             listener.IsRunned = false;  //Завершить работу вторичных потоков
@@ -76,17 +76,14 @@ namespace QService
             Console.WriteLine("Client connected. {0}", _connector.Id);
         }
 
-        private async void Channel_Closed(object sender, EventArgs e)
+        private void Channel_Closed(object sender, EventArgs e)
         {
             Console.WriteLine("Client disconnected. {0}", _connector.Id);
             FreeConnector(_connector);  //Освободить коннектор
             listener.IsRunned = false;  //Завершить работу вторичных потоков
 
             _userAuth = new UserAuthentication();
-            if (await _uManager.SignOut(_userName))
-            {
-                Console.WriteLine("User {0} is delete", _userName);
-            }
+            _uManager.SignOutAsync(_userName);
         }
 
         ~DataFeed()

@@ -2,7 +2,6 @@
 using Microsoft.AspNet.Identity.EntityFramework;
 using QService.Concrete;
 using System;
-using System.Collections.Generic;
 using System.IdentityModel.Selectors;
 using System.ServiceModel;
 using static QService.Concrete.Connectors;
@@ -11,19 +10,16 @@ namespace QService.Admin
 {
     public class UserAuthentication : UserNamePasswordValidator
     {
-        private IdentityContext _identityContext;
         private UManager _uManager;
         private static bool _isCreated = false;
 
         public UserAuthentication()
         {
-            _identityContext = new IdentityContext();
             _uManager = new UManager();
-            var roleManager = new RoleManager<IdentityRole>(new RoleStore<IdentityRole>(_identityContext));
             Console.WriteLine("UserAuthentication created");
             if (!_isCreated)
             {
-                var connector = GetAvialableConnector();
+                var connector = GetAvialableConnector();    //Только для того чтобы инициализировать класс Connectors
                 FreeConnector(connector);
                 _isCreated = true;
             }
@@ -40,7 +36,7 @@ namespace QService.Admin
         /// </summary>
         /// <param name="userName"></param>
         /// <param name="password"></param>
-        public async override void Validate(string userName, string password)
+        public override void Validate(string userName, string password)
         {
             var user = _uManager.FindByName(userName);
 
@@ -49,33 +45,13 @@ namespace QService.Admin
                 throw new FaultException("Пользователь не найден.");
             }
             else
-            {           
-                if (!await _uManager.SignIn(userName))
-                {
-                    Console.WriteLine("Пользователь уже подключен");
-                    throw new FaultException("Пользователь уже подключен");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Метод проверяет входит ли пользователь в указанную роль или нет.
-        /// </summary>
-        /// <param name="userName"></param>
-        /// <param name="roleName"></param>
-        /// <returns></returns>
-        public bool IsInRole(string userName, string[] roles)
-        {
-            var user = _uManager.FindByName(userName);
-            foreach (var role in roles)
             {
-                if (_uManager.IsInRole(user.Id, role))
+                if(_uManager.IsUserConnected(userName))
                 {
-                    return true;
+                    throw new FaultException("Пользователь уже подключен.");
                 }
+                _uManager.SignInAsync(userName);        
             }
-
-            return false;
         }
     }
 }
