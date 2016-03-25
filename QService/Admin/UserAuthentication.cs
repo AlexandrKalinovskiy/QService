@@ -10,12 +10,11 @@ namespace QService.Admin
 {
     public class UserAuthentication : UserNamePasswordValidator
     {
-        private UManager _uManager;
+        private static UManager _uManager = new UManager(new UserStore<User>(new IdentityContext()));
         private static bool _isCreated = false;
 
         public UserAuthentication()
-        {
-            _uManager = new UManager();
+        {           
             Console.WriteLine("UserAuthentication created");
             if (!_isCreated)
             {
@@ -38,19 +37,19 @@ namespace QService.Admin
         /// <param name="password"></param>
         public override void Validate(string userName, string password)
         {
-            var user = _uManager.FindByName(userName);
+            //var user = _uManager.FindByName(userName);
+            var user = _uManager.Find(userName, password);
 
             if (user == null)
             {
-                throw new FaultException("Пользователь не найден.");
+                throw new FaultException("Неверное имя пользователя или пароль.");
             }
             else
             {
-                if(_uManager.IsUserConnected(userName))
+                if (!_uManager.SignIn(userName))
                 {
-                    throw new FaultException("Пользователь уже подключен.");
-                }
-                _uManager.SignInAsync(userName);        
+                    throw new FaultException("Ошибка подключения. Вероятно сессия уже запущена.");
+                }     
             }
         }
     }

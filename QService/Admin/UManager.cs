@@ -3,6 +3,7 @@ using Microsoft.AspNet.Identity.EntityFramework;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin;
 using QService.Concrete;
+using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 
@@ -12,12 +13,7 @@ namespace QService.Admin
     {
         private static IdentityContext _identityContext = new IdentityContext();
         private static List<string> _activeUsers = new List<string>();
-
-        //public UManager()
-        //        : base(new UserStore<User>(_identityContext))
-        //{
-
-        //}
+        private static UManager _uManager = new UManager(new UserStore<User>(new IdentityContext()));
 
         public UManager(IUserStore<User> store) 
             : base(store) 
@@ -28,6 +24,7 @@ namespace QService.Admin
         {
             IdentityContext db = context.Get<IdentityContext>();
             UManager manager = new UManager(new UserStore<User>(db));
+
             return manager;
         }
 
@@ -35,18 +32,27 @@ namespace QService.Admin
         /// Метод регистрирует активного пользователя
         /// </summary>
         /// <param name="userName"></param>
-        public async void SignInAsync(string userName)
+        public bool SignIn(string userName)
         {
             if (_activeUsers.Contains(userName))
             {
-                throw new FaultException("Пользователь уже подключен");
+                return false;
             }
 
-            var user = await base.FindByNameAsync(userName);
-            user.Active = true;
+            var user = _uManager.FindByName(userName);
 
-            await base.UpdateAsync(user);
-            _activeUsers.Add(userName);
+            try
+            {
+                user.Active = true;
+                _uManager.Update(user);
+                _activeUsers.Add(userName);
+            }
+            catch (Exception e)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -54,30 +60,36 @@ namespace QService.Admin
         /// </summary>
         /// <param name="userName"></param>
         /// <returns></returns>
-        public async void SignOutAsync(string userName)
+        public bool SignOut(string userName)
         {
-            var user = await base.FindByNameAsync(userName);
+            var user = _uManager.FindByName(userName);
             user.Active = false;
-            var result = await base.UpdateAsync(user);
 
-            if (result.Succeeded)
+            try
             {
+                _uManager.Update(user);
                 _activeUsers.Remove(userName);
             }
+            catch(Exception e)
+            {
+                return false;
+            }
+
+            return true;
         }
 
+
         /// <summary>
-        /// Метод проверяет входит ли пользователь в указанную роль или нет.
+        /// Метод проверяет содержится ли пользователь в хотябы одной из указанных ролей
         /// </summary>
-        /// <param name="userName"></param>
-        /// <param name="roleName"></param>
+        /// <param name="userId"></param>
+        /// <param name="roles"></param>
         /// <returns></returns>
-        //public bool IsInRole(string userName, string[] roles)
+        //public bool IsInRoles(string userId, string[] roles)
         //{
-        //    var user = _uManager.FindByName(userName);
-        //    foreach (var role in roles)
+        //    foreach(var role in roles)
         //    {
-        //        if (_uManager.IsInRole(user.Id, role))
+        //        if(_uManager.IsInRole(userId, role))
         //        {
         //            return true;
         //        }
@@ -85,20 +97,5 @@ namespace QService.Admin
 
         //    return false;
         //}
-
-        /// <summary>
-        /// Метод проверяет подключен ли пользователь или нет.
-        /// </summary>
-        /// <param name="userName"></param>
-        /// <returns></returns>
-        public bool IsUserConnected(string userName)
-        {
-            if (_activeUsers.Contains(userName))
-            {
-                return true;
-            }
-
-            return false;
-        }
     }
 }

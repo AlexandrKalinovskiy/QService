@@ -4,6 +4,7 @@ using QService.Admin;
 using StockSharp.IQFeed;
 using System;
 using System.Collections.Generic;
+using System.ServiceModel;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,7 +15,7 @@ namespace QService.Concrete
         private static IdentityContext _identityContext;
         private static UserManager<User> _userManager;
         private static List<Connector> _connectors;
-        private const int _connectorsCount = 3;
+        private const int _connectorsCount = 15;
         private static Connector _connector;
 
 
@@ -40,7 +41,7 @@ namespace QService.Concrete
             Console.WriteLine("Connectors created");          
 
             new Task(AvialableCount).Start();   //Запуск задачи мониторинга пула коннекторов
-        }         
+        }
 
         /// <summary>
         /// Метод возвращает свободный от работы коннектор.
@@ -69,13 +70,17 @@ namespace QService.Concrete
         /// <param name="connector"></param>
         public static void FreeConnector(Connector connector)
         {
-            connector.IsAvialable = true;
+            if(connector != null)
+                connector.IsAvialable = true;
         }
 
         //Вспомогательный класс. Наследуется от IQFeedTrader.
         public class Connector: IQFeedTrader
         {
-            public bool IsAvialable { get; set; }
+            //Свойство будет содержать Id сеанса, который в данный момент использует коннектор.
+            //В случае аварийного завершения сеанса, можно будет освободить коннекторы которые были им заняты.
+            //public string SessionId { get; set; }  
+            public bool IsAvialable { get; set; }           
         }
 
         private static void AvialableCount()    //Для мониторинга в процессе разработки

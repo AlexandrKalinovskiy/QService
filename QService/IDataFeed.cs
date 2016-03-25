@@ -31,7 +31,7 @@ namespace QService
         void NewSecurities(IEnumerable<Security> securities);
 
         [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
-        void NewLevel1Values(Level1 level1);
+        void NewLevel1Values(Security security, IEnumerable<KeyValuePair<Level1, object>> changes);
 
         [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
         void NewCandles(IEnumerable<Candle> candles);
