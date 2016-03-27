@@ -97,7 +97,6 @@ namespace QService
                     listChanges.Add(kV);
                 }
 
-                Console.WriteLine("New level1");
                 Callback.NewLevel1Values((Security)security, listChanges);
             }
         }
@@ -135,6 +134,8 @@ namespace QService
         public void GetSecurities(string ticker, string exchangeBoardCode)
         {
             string[] roles = {"Basic", "Level1", "Level2", "Admin" };   //Доступно ролям
+
+            //Callback.OnError(new FaultException("Error"));
 
             if (roles.Intersect(_roles).Any())  //Доступно только ролям Basic и выше.
             {
@@ -260,7 +261,7 @@ namespace QService
         {
             FreeConnector(_connector);  //Осовободить коннектор
             _listener.IsRunned = false;  //Завершить работу вторичных потоков
-            _uManager.SignOut(_user.UserName);
+            _uManager.SignOut(_user.UserName);  //Завершить сеанс пользователя
             Console.WriteLine("Dispose instance {0}", _connector.Id);
         }
 
