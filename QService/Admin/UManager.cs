@@ -3,9 +3,12 @@ using Microsoft.AspNet.Identity.EntityFramework;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin;
 using QService.Concrete;
+using QService.Entities;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.ServiceModel;
+using System.Threading.Tasks;
 
 namespace QService.Admin
 {
@@ -14,6 +17,7 @@ namespace QService.Admin
         private static IdentityContext _identityContext = new IdentityContext();
         private static List<string> _activeUsers = new List<string>();
         private static UManager _uManager = new UManager(new UserStore<User>(new IdentityContext()));
+        private static RoleManager<ApplicationRole> _rManager = new RoleManager<ApplicationRole>(new RoleStore<ApplicationRole>(new IdentityContext()));
 
         public UManager(IUserStore<User> store) 
             : base(store) 
@@ -78,24 +82,20 @@ namespace QService.Admin
             return true;
         }
 
+        public List<ApplicationRole> GetUserRoles(string userId)
+        {
+            var user = _uManager.FindById(userId);
+            var userRoles = _uManager.GetRoles(userId);
+            var allRoles = _rManager.Roles.ToList();
 
-        /// <summary>
-        /// Метод проверяет содержится ли пользователь в хотябы одной из указанных ролей
-        /// </summary>
-        /// <param name="userId"></param>
-        /// <param name="roles"></param>
-        /// <returns></returns>
-        //public bool IsInRoles(string userId, string[] roles)
-        //{
-        //    foreach(var role in roles)
-        //    {
-        //        if(_uManager.IsInRole(userId, role))
-        //        {
-        //            return true;
-        //        }
-        //    }
+            var rolesList = new List<ApplicationRole>();
+            foreach(var role in userRoles)
+            {
+                var r = _rManager.FindByName(role);
+                rolesList.Add(r);   
+            }
 
-        //    return false;
-        //}
+            return rolesList;
+        }
     }
 }

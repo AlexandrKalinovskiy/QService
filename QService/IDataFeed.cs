@@ -35,7 +35,7 @@ namespace QService
 
         [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
         void NewCandles(IEnumerable<Candle> candles);
-
+       
         [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
         void OnError(FaultException exception);
     }

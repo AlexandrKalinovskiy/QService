@@ -10,6 +10,7 @@ using static QService.Concrete.Connectors;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.EntityFramework;
+using System.Threading;
 
 namespace QService
 {
@@ -22,7 +23,7 @@ namespace QService
         private EFDbContext _context;
         private Listener _listener;
         private static int _stakeSize = 200;
-        private static int _conCount = 3; //Количество потоков для обработки исторических данных будет меняться в зависимости от тарифа. 3 - Basic
+        private int _conCount = 1; //Количество потоков для обработки исторических данных будет меняться в зависимости от тарифа. 1 - Default
         private Info info;
         private UManager _uManager;
         private User _user;
@@ -40,7 +41,11 @@ namespace QService
             _uManager = new UManager(new UserStore<User>(new IdentityContext()));
             _user = _uManager.FindByName(operationContext.ServiceSecurityContext.PrimaryIdentity.Name); //Получаем текущего Identity пользователя 
 
-            _roles = _uManager.GetRoles(_user.Id);  //Создадим список ролей пользователя к которым будем обращаться в медодах для проверки, чтобы не загружать БД лишними запросами.
+            var roles = _uManager.GetUserRoles(_user.Id);  //Создадим список ролей пользователя к которым будем обращаться в методах для проверки, чтобы не загружать БД лишними запросами.
+
+            _roles = roles.Select(r => r.Name).ToList();
+
+            _conCount = roles.Max(r => r.NumberOfThreads);
 
             _connector = GetAvialableConnector();
             _connector.ValuesChanged += Level1Changed;
@@ -97,7 +102,7 @@ namespace QService
                     listChanges.Add(kV);
                 }
 
-                Callback.NewLevel1Values((Security)security, listChanges);
+                //Callback.NewLevel1Values((Security)security, listChanges);
             }
         }
 
@@ -124,6 +129,10 @@ namespace QService
                     Console.WriteLine("Register SECURITY {0}, {1}", _connector.ConnectionState, _connector.Id);
                 }
             }
+            else
+            {
+                Callback.OnError(new FaultException("Level1 недоступен для этого аккаунта."));
+            }
         }
 
         /// <summary>
@@ -134,8 +143,6 @@ namespace QService
         public void GetSecurities(string ticker, string exchangeBoardCode)
         {
             string[] roles = {"Basic", "Level1", "Level2", "Admin" };   //Доступно ролям
-
-            //Callback.OnError(new FaultException("Error"));
 
             if (roles.Intersect(_roles).Any())  //Доступно только ролям Basic и выше.
             {
@@ -198,7 +205,6 @@ namespace QService
                             catch (Exception e)
                             {
                                 Console.WriteLine("{0}", e);
-                                //operationContext.Channel.Close();
                                 break;
                             }
                         }

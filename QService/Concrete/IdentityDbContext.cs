@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNet.Identity.EntityFramework;
 using QService.Admin;
+using QService.Entities;
+using System.Data.Entity;
 
 namespace QService.Concrete
 {
@@ -11,5 +13,7 @@ namespace QService.Concrete
         {
             return new IdentityDbContext();
         }
+
+        new public DbSet<ApplicationRole> Roles { get; set; }
     }
 }
