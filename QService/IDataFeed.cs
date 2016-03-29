@@ -22,6 +22,9 @@ namespace QService
         void SubscribeLevel1(Security security);
 
         [OperationContract(IsOneWay = true, IsInitiating = false)]
+        void UnSubscribeLevel1(Security security);
+
+        [OperationContract(IsOneWay = true, IsInitiating = false)]
         void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
     }
 

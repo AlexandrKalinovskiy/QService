@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.EntityFramework;
 using System.Threading;
+using StockSharp.Messages;
 
 namespace QService
 {
@@ -45,7 +46,7 @@ namespace QService
 
             _roles = roles.Select(r => r.Name).ToList();
 
-            _conCount = roles.Max(r => r.NumberOfThreads);
+            _conCount = roles.Max(r => r.NumberOfThreads);  //Установить максимальное количество потоков доступное из ролей данному пользователю
 
             _connector = GetAvialableConnector();
             _connector.ValuesChanged += Level1Changed;
@@ -91,18 +92,22 @@ namespace QService
         /// <param name="changes"></param>
         /// <param name="arg3"></param>
         /// <param name="arg4"></param>
-        private void Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<StockSharp.Messages.Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
+        private void Level1Changed(StockSharp.BusinessEntities.Security security, IEnumerable<KeyValuePair<Level1Fields, object>> changes, DateTimeOffset arg3, DateTime arg4)
         {
             if (info.IsChannelOpened(operationContext))
             {
                 List<KeyValuePair<Level1, object>> listChanges = new List<KeyValuePair<Level1, object>>();
                 foreach(var change in changes)
                 {
-                    var kV = new KeyValuePair<Level1, object>((Level1)change.Key, change.Value);
-                    listChanges.Add(kV);
+                    if (change.Key != (Level1Fields)Level1.BestBidTime && change.Key != (Level1Fields)Level1.BestAskTime)
+                    {
+                        var kV = new KeyValuePair<Level1, object>((Level1)change.Key, change.Value);
+                        listChanges.Add(kV);
+                    }
                 }
 
-                //Callback.NewLevel1Values((Security)security, listChanges);
+                if(operationContext.Channel.State == CommunicationState.Opened)
+                    Callback.NewLevel1Values((Security)security, listChanges);
             }
         }
 
@@ -132,6 +137,21 @@ namespace QService
             else
             {
                 Callback.OnError(new FaultException("Level1 недоступен для этого аккаунта."));
+            }
+        }
+
+        public void UnSubscribeLevel1(Security security)
+        {
+            if (security != null)
+            {
+                var criteria = new StockSharp.BusinessEntities.Security
+                {
+                    Code = security.Ticker,
+                    Id = security.Code,
+                    Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
+                };
+                //Отписываемся от получения новой информации по Level1
+                _connector.UnRegisterSecurity(criteria);
             }
         }
 

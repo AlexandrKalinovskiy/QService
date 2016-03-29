@@ -4,6 +4,7 @@ using QService.Admin;
 using StockSharp.IQFeed;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.ServiceModel;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,7 +16,7 @@ namespace QService.Concrete
         private static IdentityContext _identityContext;
         private static UserManager<User> _userManager;
         private static List<Connector> _connectors;
-        private const int _connectorsCount = 20;
+        private const int _connectorsCount = 50;
         private static Connector _connector;
 
 
@@ -70,8 +71,15 @@ namespace QService.Concrete
         /// <param name="connector"></param>
         public static void FreeConnector(Connector connector)
         {
-            if(connector != null)
+            if (connector != null)
+            {
+                foreach(var registerSecurity in connector.RegisteredSecurities)
+                {
+                    connector.UnRegisterSecurity(registerSecurity); //Если имеются зарегистрированные инструменты для Level, то отписываемся от них
+                }
+
                 connector.IsAvialable = true;
+            }
         }
 
         //Вспомогательный класс. Наследуется от IQFeedTrader.
