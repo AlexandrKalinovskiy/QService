@@ -50,6 +50,7 @@ namespace QService
 
             _connector = GetAvialableConnector();
             _connector.ValuesChanged += Level1Changed;
+            _connector.NewTrades += NewTrades;
 
             Console.WriteLine("SID: {0} ", operationContext.Channel.SessionId);
 
@@ -108,7 +109,7 @@ namespace QService
 
                 if(operationContext.Channel.State == CommunicationState.Opened)
                     Callback.NewLevel1Values((Security)security, listChanges);
-            }
+            }       
         }
 
         /// <summary>
@@ -281,6 +282,30 @@ namespace QService
         public void GetExchangeBoards(string code)
         {
             throw new NotImplementedException();
+        }
+
+
+        /// <summary>
+        /// Метод подписывается на получение рыночной информации
+        /// </summary>
+        /// <param name="security"></param>
+        /// <param name="marketDataTypes"></param>
+        public void SubscribeMarketData(Security security, Entities.MarketDataTypes marketDataTypes)
+        {
+            var criteria = new StockSharp.BusinessEntities.Security
+            {
+                Code = security.Ticker,
+                Id = security.Code,
+                Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
+            };
+            _connector.SubscribeMarketData(criteria, (StockSharp.Messages.MarketDataTypes)marketDataTypes);
+            Console.WriteLine("SubscribeMarketData");
+        }
+
+        //Callback for SubscribeMarketData -> NewTrades
+        private void NewTrades(IEnumerable<StockSharp.BusinessEntities.Trade> trades)
+        {
+            Console.WriteLine("Trades {0}", trades);
         }
 
         public void Dispose()

@@ -4,8 +4,6 @@ using QService.Admin;
 using StockSharp.IQFeed;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.ServiceModel;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,7 +14,7 @@ namespace QService.Concrete
         private static IdentityContext _identityContext;
         private static UserManager<User> _userManager;
         private static List<Connector> _connectors;
-        private const int _connectorsCount = 50;
+        private const int _connectorsCount = 10;
         private static Connector _connector;
 
 
@@ -41,7 +39,7 @@ namespace QService.Concrete
 
             Console.WriteLine("Connectors created");          
 
-            new Task(AvialableCount).Start();   //Запуск задачи мониторинга пула коннекторов
+            //new Task(AvialableCount).Start();   //Запуск задачи мониторинга пула коннекторов
         }
 
         /// <summary>
