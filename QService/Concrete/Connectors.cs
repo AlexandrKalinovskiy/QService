@@ -76,6 +76,11 @@ namespace QService.Concrete
                     connector.UnRegisterSecurity(registerSecurity); //Если имеются зарегистрированные инструменты для Level, то отписываемся от них
                 }
 
+                foreach (var registerSecurity in connector.RegisteredTrades)
+                {
+                    connector.UnRegisterTrades(registerSecurity); //Если имеются зарегистрированные инструменты для Trades, то отписываемся от них
+                }
+
                 connector.IsAvialable = true;
             }
         }

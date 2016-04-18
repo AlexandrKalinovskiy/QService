@@ -51,6 +51,11 @@ namespace QService
             _connector = GetAvialableConnector();
             _connector.ValuesChanged += Level1Changed;
             _connector.NewTrades += NewTrades;
+            _connector.MarketDepthsChanged += MarketDepthsChanged;
+            _connector.NewOrders += NewOrders;
+            _connector.NewCandles += NewCandles;
+            _connector.NewNews += NewNews;
+            _connector.Error += Error;
 
             Console.WriteLine("SID: {0} ", operationContext.Channel.SessionId);
 
@@ -298,6 +303,12 @@ namespace QService
                 Id = security.Code,
                 Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
             };
+
+            //if(marketDataTypes == Entities.MarketDataTypes.CandleTimeFrame)
+            //{
+            //    _connector.SubscribeCandles()   
+            //}
+
             _connector.SubscribeMarketData(criteria, (StockSharp.Messages.MarketDataTypes)marketDataTypes);
             Console.WriteLine("SubscribeMarketData");
         }
@@ -308,12 +319,46 @@ namespace QService
             Console.WriteLine("Trades {0}", trades);
         }
 
+        //Callback for SubscribeMarketData -> MarketDepth
+        private void MarketDepthsChanged(IEnumerable<StockSharp.BusinessEntities.MarketDepth> marketDepth)
+        {
+            Console.WriteLine("MarketDepth {0}", marketDepth.FirstOrDefault().BestAsk);
+        }
+
+        //Callback for SubscribeMarketData -> NewCandles
+        private void NewCandles(CandleSeries arg1, IEnumerable<StockSharp.Algo.Candles.Candle> arg2)
+        {
+            Console.WriteLine("NewCandles");
+        }
+
+        //Callback for SubscribeMarketData -> NewOrders
+        private void NewOrders(IEnumerable<StockSharp.BusinessEntities.Order> obj)
+        {
+            Console.WriteLine("NewOrders");
+        }
+
+        //Callback for SubscribeMarketData -> NewNews
+        private void NewNews(StockSharp.BusinessEntities.News news)
+        {
+            Console.WriteLine("NewNews {0}", news.Headline);
+        }
+
         public void Dispose()
         {
             FreeConnector(_connector);  //Осовободить коннектор
             _listener.IsRunned = false;  //Завершить работу вторичных потоков
             _uManager.SignOut(_user.UserName);  //Завершить сеанс пользователя
             Console.WriteLine("Dispose instance {0}", _connector.Id);
+        }
+
+        
+        /// <summary>
+        /// Метод для обработки исключений во время выполнения
+        /// </summary>
+        /// <param name="obj"></param>
+        private void Error(Exception exception)
+        {
+            Console.WriteLine("Error {0}", exception);
         }
 
         IDataFeedCallback Callback
