@@ -313,6 +313,16 @@ namespace QService
             Console.WriteLine("SubscribeMarketData");
         }
 
+        public void SubscribeMarketData(Security security, Entities.MarketDataTypes marketDataTypes, TimeSpan timeFrame)
+        {
+            var criteria = new StockSharp.BusinessEntities.Security
+            {
+                Code = security.Ticker,
+                Id = security.Code,
+                Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
+            };
+        }
+
         //Callback for SubscribeMarketData -> NewTrades
         private void NewTrades(IEnumerable<StockSharp.BusinessEntities.Trade> trades)
         {
@@ -323,6 +333,10 @@ namespace QService
         private void MarketDepthsChanged(IEnumerable<StockSharp.BusinessEntities.MarketDepth> marketDepth)
         {
             Console.WriteLine("MarketDepth {0}", marketDepth.FirstOrDefault().BestAsk);
+            List<KeyValuePair<Entities.MarketDataTypes, object>> listMarketDepth = new List<KeyValuePair<Entities.MarketDataTypes, object>>();
+            var kV = new KeyValuePair<Entities.MarketDataTypes, object>(Entities.MarketDataTypes.News, marketDepth);
+            listMarketDepth.Add(kV);
+            //Callback.NewMarketData((Security)marketDepth.FirstOrDefault().Security, listMarketDepth);
         }
 
         //Callback for SubscribeMarketData -> NewCandles
@@ -341,6 +355,7 @@ namespace QService
         private void NewNews(StockSharp.BusinessEntities.News news)
         {
             Console.WriteLine("NewNews {0}", news.Headline);
+            Callback.NewNews((News)news);
         }
 
         public void Dispose()

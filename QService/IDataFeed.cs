@@ -29,6 +29,9 @@ namespace QService
 
         [OperationContract(IsOneWay = true, IsInitiating = false)]
         void SubscribeMarketData(Security security, MarketDataTypes marketDataTypes);
+
+        [OperationContract(IsOneWay = true, IsInitiating = false)]
+        void SubscribeMarketData(Security security, MarketDataTypes marketDataTypes, TimeSpan timeFrame);
     }
 
     public interface IDataFeedCallback
@@ -47,5 +50,8 @@ namespace QService
 
         [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
         void NewMarketData(Security security, IEnumerable<KeyValuePair<MarketDataTypes, object>> changes);
+
+        [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
+        void NewNews(News news);
     }
 }
