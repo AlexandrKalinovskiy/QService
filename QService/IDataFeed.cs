@@ -18,11 +18,11 @@ namespace QService
         [OperationContract(IsOneWay = true, IsInitiating = false)]
         void GetExchangeBoards(string code);
 
-        [OperationContract(IsOneWay = true, IsInitiating = false)]
-        void SubscribeLevel1(Security security);
+        //[OperationContract(IsOneWay = true, IsInitiating = false)]
+        //void SubscribeLevel1(Security security);
 
-        [OperationContract(IsOneWay = true, IsInitiating = false)]
-        void UnSubscribeLevel1(Security security);
+        //[OperationContract(IsOneWay = true, IsInitiating = false)]
+        //void UnSubscribeLevel1(Security security);
 
         [OperationContract(IsOneWay = true, IsInitiating = false)]
         void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
@@ -31,7 +31,10 @@ namespace QService
         void SubscribeMarketData(Security security, MarketDataTypes marketDataTypes);
 
         [OperationContract(IsOneWay = true, IsInitiating = false)]
-        void SubscribeMarketData(Security security, MarketDataTypes marketDataTypes, TimeSpan timeFrame);
+        void UnSubscribeMarketData(Security security, MarketDataTypes marketDataTypes);
+
+        //[OperationContract(IsOneWay = true, IsInitiating = false)]
+        //void SubscribeCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
     }
 
     public interface IDataFeedCallback

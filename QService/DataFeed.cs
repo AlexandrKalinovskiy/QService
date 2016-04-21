@@ -12,6 +12,7 @@ using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.EntityFramework;
 using System.Threading;
 using StockSharp.Messages;
+using static QService.Support;
 
 namespace QService
 {
@@ -28,7 +29,7 @@ namespace QService
         private Info info;
         private UManager _uManager;
         private User _user;
-        private IList<string> _roles;   //Коллекция ролей пользователя. Служит для снижения нагрузки на базу данных при частых вызовах методов
+        private List<string> _roles;   //Коллекция ролей пользователя. Служит для снижения нагрузки на базу данных при частых вызовах методов
 
         DataFeed()
         {
@@ -50,10 +51,7 @@ namespace QService
 
             _connector = GetAvialableConnector();
             _connector.ValuesChanged += Level1Changed;
-            _connector.NewTrades += NewTrades;
             _connector.MarketDepthsChanged += MarketDepthsChanged;
-            _connector.NewOrders += NewOrders;
-            _connector.NewCandles += NewCandles;
             _connector.NewNews += NewNews;
             _connector.Error += Error;
 
@@ -88,7 +86,7 @@ namespace QService
 
         public void Connect()
         {
-         
+
         }
 
         /// <summary>
@@ -103,7 +101,7 @@ namespace QService
             if (info.IsChannelOpened(operationContext))
             {
                 List<KeyValuePair<Level1, object>> listChanges = new List<KeyValuePair<Level1, object>>();
-                foreach(var change in changes)
+                foreach (var change in changes)
                 {
                     if (change.Key != (Level1Fields)Level1.BestBidTime && change.Key != (Level1Fields)Level1.BestAskTime)
                     {
@@ -112,54 +110,11 @@ namespace QService
                     }
                 }
 
-                if(operationContext.Channel.State == CommunicationState.Opened)
+                if (operationContext.Channel.State == CommunicationState.Opened)
                     Callback.NewLevel1Values((Security)security, listChanges);
-            }       
-        }
-
-        /// <summary>
-        /// Могут вызывать пользователи только с ролями "Level1", "Level2" и "Admin"
-        /// </summary>
-        /// <param name="security"></param>
-        public void SubscribeLevel1(Security security)
-        {
-            string[] roles = { "Level1", "Level2", "Admin" };   //Доступно ролям.
-
-            if (roles.Intersect(_roles).Any())
-            {
-                if (security != null)
-                {
-                    var criteria = new StockSharp.BusinessEntities.Security
-                    {
-                        Code = security.Ticker,
-                        Id = security.Code,
-                        Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
-                    };
-                    //Регистрируем инструмент для получения Level1
-                    _connector.RegisterSecurity(criteria);
-                    Console.WriteLine("Register SECURITY {0}, {1}", _connector.ConnectionState, _connector.Id);
-                }
-            }
-            else
-            {
-                Callback.OnError(new FaultException("Level1 недоступен для этого аккаунта."));
             }
         }
 
-        public void UnSubscribeLevel1(Security security)
-        {
-            if (security != null)
-            {
-                var criteria = new StockSharp.BusinessEntities.Security
-                {
-                    Code = security.Ticker,
-                    Id = security.Code,
-                    Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
-                };
-                //Отписываемся от получения новой информации по Level1
-                _connector.UnRegisterSecurity(criteria);
-            }
-        }
 
         /// <summary>
         /// Могут вызывать пользователи с ролями "Basic", "Level1" и "Level2"
@@ -168,7 +123,7 @@ namespace QService
         /// <param name="exchangeBoardCode"></param> 
         public void GetSecurities(string ticker, string exchangeBoardCode)
         {
-            string[] roles = {"Basic", "Level1", "Level2", "Admin" };   //Доступно ролям
+            string[] roles = { "Basic", "Level1", "Level2", "Admin" };   //Доступно ролям
 
             if (roles.Intersect(_roles).Any())  //Доступно только ролям Basic и выше.
             {
@@ -297,39 +252,49 @@ namespace QService
         /// <param name="marketDataTypes"></param>
         public void SubscribeMarketData(Security security, Entities.MarketDataTypes marketDataTypes)
         {
-            var criteria = new StockSharp.BusinessEntities.Security
+            switch (marketDataTypes)
             {
-                Code = security.Ticker,
-                Id = security.Code,
-                Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
-            };
-
-            //if(marketDataTypes == Entities.MarketDataTypes.CandleTimeFrame)
-            //{
-            //    _connector.SubscribeCandles()   
-            //}
-
-            _connector.SubscribeMarketData(criteria, (StockSharp.Messages.MarketDataTypes)marketDataTypes);
-            Console.WriteLine("SubscribeMarketData");
+                case Entities.MarketDataTypes.Level1:
+                    var result = SubscribeLevel1(_connector, security, _roles); //Подписываемся на получение Level1
+                    if (result != null)  
+                        Callback.OnError(result);
+                    break;
+                case Entities.MarketDataTypes.News:
+                    SubscribeNews(_connector, security);    //Подписываемся на новости
+                    break;
+                default:
+                    break;
+            }       
         }
 
-        public void SubscribeMarketData(Security security, Entities.MarketDataTypes marketDataTypes, TimeSpan timeFrame)
+        public void UnSubscribeMarketData(Security security, Entities.MarketDataTypes marketDataTypes)
         {
-            var criteria = new StockSharp.BusinessEntities.Security
-            {
-                Code = security.Ticker,
-                Id = security.Code,
-                Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
-            };
+            _connector.UnSubscribeMarketData((StockSharp.BusinessEntities.Security)security, (StockSharp.Messages.MarketDataTypes)marketDataTypes);
         }
 
-        //Callback for SubscribeMarketData -> NewTrades
-        private void NewTrades(IEnumerable<StockSharp.BusinessEntities.Trade> trades)
-        {
-            Console.WriteLine("Trades {0}", trades);
-        }
+        //public void SubscribeCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame)
+        //{
+        //    var criteria = new StockSharp.BusinessEntities.Security
+        //    {
+        //        Code = security.Ticker,
+        //        Id = security.Code,
+        //        Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
+        //    };
+
+        //    var candleSeries = new CandleSeries
+        //    {
+        //        Arg = timeFrame,
+        //        CandleType = typeof(TimeFrameCandle),
+        //        From = from,
+        //        To = to,
+        //        Security = criteria
+        //    };
+
+        //    _connector.SubscribeCandles(candleSeries, from, to);
+        //}
 
         //Callback for SubscribeMarketData -> MarketDepth
+
         private void MarketDepthsChanged(IEnumerable<StockSharp.BusinessEntities.MarketDepth> marketDepth)
         {
             Console.WriteLine("MarketDepth {0}", marketDepth.FirstOrDefault().BestAsk);
@@ -337,18 +302,6 @@ namespace QService
             var kV = new KeyValuePair<Entities.MarketDataTypes, object>(Entities.MarketDataTypes.News, marketDepth);
             listMarketDepth.Add(kV);
             //Callback.NewMarketData((Security)marketDepth.FirstOrDefault().Security, listMarketDepth);
-        }
-
-        //Callback for SubscribeMarketData -> NewCandles
-        private void NewCandles(CandleSeries arg1, IEnumerable<StockSharp.Algo.Candles.Candle> arg2)
-        {
-            Console.WriteLine("NewCandles");
-        }
-
-        //Callback for SubscribeMarketData -> NewOrders
-        private void NewOrders(IEnumerable<StockSharp.BusinessEntities.Order> obj)
-        {
-            Console.WriteLine("NewOrders");
         }
 
         //Callback for SubscribeMarketData -> NewNews
@@ -365,8 +318,7 @@ namespace QService
             _uManager.SignOut(_user.UserName);  //Завершить сеанс пользователя
             Console.WriteLine("Dispose instance {0}", _connector.Id);
         }
-
-        
+       
         /// <summary>
         /// Метод для обработки исключений во время выполнения
         /// </summary>

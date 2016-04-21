@@ -125,6 +125,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Admin\UManager.cs" />
+    <Compile Include="Support.cs" />
     <Compile Include="Entities\ApplicationRole.cs" />
     <Compile Include="Entities\MarketDataTypes.cs" />
     <Compile Include="Entities\News.cs" />

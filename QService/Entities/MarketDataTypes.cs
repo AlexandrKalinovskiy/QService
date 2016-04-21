@@ -11,8 +11,8 @@ namespace QService.Entities
         [EnumMember]
         MarketDepth = 1,
 
-        [EnumMember]
-        Trades = 2,
+        //[EnumMember]
+        //Trades = 2,
 
         //[EnumMember]
         //OrderLog = 3,
