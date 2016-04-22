@@ -36,12 +36,12 @@ namespace QService.Entities
         {
             return new News
             {
-                Board = (ExchangeBoard)v.Board,
-                Security = (Security)v.Security,
+                //Board = (ExchangeBoard)v.Board,
+                //Security = (Security)v.Security,
                 Headline = v.Headline,
                 Id = v.Id,
                 LocalTime = v.LocalTime,
-                ExtensionInfo = v.ExtensionInfo,
+                //ExtensionInfo = v.ExtensionInfo,
                 ServerTime = v.ServerTime,
                 Source = v.Source,
                 Story = v.Story,

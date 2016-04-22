@@ -244,7 +244,6 @@ namespace QService
             throw new NotImplementedException();
         }
 
-
         /// <summary>
         /// Метод подписывается на получение рыночной информации
         /// </summary>
@@ -252,15 +251,21 @@ namespace QService
         /// <param name="marketDataTypes"></param>
         public void SubscribeMarketData(Security security, Entities.MarketDataTypes marketDataTypes)
         {
+            FaultException result = null;
             switch (marketDataTypes)
             {
                 case Entities.MarketDataTypes.Level1:
-                    var result = SubscribeLevel1(_connector, security, _roles); //Подписываемся на получение Level1
+                    result = SubscribeLevel1(_connector, security, _roles);     //Подписываемся на получение Level1.
                     if (result != null)  
                         Callback.OnError(result);
                     break;
                 case Entities.MarketDataTypes.News:
-                    SubscribeNews(_connector, security);    //Подписываемся на новости
+                    SubscribeNews(_connector, security);                            //Подписываемся на новости.
+                    break;
+                case Entities.MarketDataTypes.MarketDepth:
+                    result = SubscribeMarketDepth(_connector, security, _roles);             //Подписываемся на стакан.
+                    if (result != null)
+                        Callback.OnError(result);
                     break;
                 default:
                     break;
@@ -269,6 +274,18 @@ namespace QService
 
         public void UnSubscribeMarketData(Security security, Entities.MarketDataTypes marketDataTypes)
         {
+            switch(marketDataTypes)
+            {
+                case Entities.MarketDataTypes.Level1:
+                    UnSubscribeLevel1(_connector, security);    //Отписываемся от получения Level1 по указанному инструменту
+                    break;
+                case Entities.MarketDataTypes.News:
+                    UnSubscribeNews(_connector, security);
+                    break;
+                case Entities.MarketDataTypes.MarketDepth:
+                    UnSubscribeMarketDepth(_connector, security);
+                    break;
+            }
             _connector.UnSubscribeMarketData((StockSharp.BusinessEntities.Security)security, (StockSharp.Messages.MarketDataTypes)marketDataTypes);
         }
 
