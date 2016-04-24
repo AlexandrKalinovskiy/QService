@@ -9,7 +9,7 @@ namespace QService.Entities
         Level1 = 0,
 
         [EnumMember]
-        MarketDepth = 1,
+        Level2 = 1,
 
         //[EnumMember]
         //Trades = 2,

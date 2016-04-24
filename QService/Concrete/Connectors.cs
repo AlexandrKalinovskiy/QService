@@ -73,13 +73,18 @@ namespace QService.Concrete
             {
                 foreach(var registerSecurity in connector.RegisteredSecurities)
                 {
-                    connector.UnRegisterSecurity(registerSecurity); //Если имеются зарегистрированные инструменты для Level, то отписываемся от них
+                    connector.UnRegisterSecurity(registerSecurity); //Если имеются зарегистрированные инструменты для Level1, то отписываемся от них
                 }
 
                 foreach (var registerSecurity in connector.RegisteredTrades)
                 {
                     connector.UnRegisterTrades(registerSecurity); //Если имеются зарегистрированные инструменты для Trades, то отписываемся от них
                 }
+
+                foreach (var registerSecurity in connector.RegisteredMarketDepths)
+                {
+                    connector.UnRegisterMarketDepth(registerSecurity); //Если имеются зарегистрированные инструменты для Level2, то отписываемся от них
+                }                
 
                 connector.IsAvialable = true;
             }

@@ -97,15 +97,24 @@ namespace QService
         /// <param name="security"></param>
         /// <param name="roles"></param>
         /// <returns></returns>
-        public static FaultException SubscribeMarketDepth(Connector connector, Security security, List<string> roles)
+        public static FaultException SubscribeLevel2(Connector connector, Security security, List<string> roles)
         {
-            if(security != null)
+            string[] rolesPermission = { "Level2", "Admin" };   //Доступно ролям.
+            if (rolesPermission.Intersect(roles).Any())
             {
-                connector.SubscribeMarketData((StockSharp.BusinessEntities.Security)security, StockSharp.Messages.MarketDataTypes.MarketDepth);
+                if (security != null)
+                {
+                    connector.SubscribeMarketData((StockSharp.BusinessEntities.Security)security, StockSharp.Messages.MarketDataTypes.MarketDepth);
+                    Console.WriteLine("Level2 subscribed");
+                }
+                else
+                {
+                    return new FaultException("Значение инструмента не может быть неопределенным.");
+                }
             }
             else
             {
-                return new FaultException("Значение инструмента не может быть неопределенным.");
+                return new FaultException("Level2 недоступен для этого аккаунта.");
             }
 
             return null;
@@ -117,7 +126,7 @@ namespace QService
         /// <param name="connector"></param>
         /// <param name="security"></param>
         /// <returns></returns>
-        public static FaultException UnSubscribeMarketDepth(Connector connector, Security security)
+        public static FaultException UnSubscribeLevel2(Connector connector, Security security)
         {
             if (security != null)
             {

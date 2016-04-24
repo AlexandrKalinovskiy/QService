@@ -18,12 +18,6 @@ namespace QService
         [OperationContract(IsOneWay = true, IsInitiating = false)]
         void GetExchangeBoards(string code);
 
-        //[OperationContract(IsOneWay = true, IsInitiating = false)]
-        //void SubscribeLevel1(Security security);
-
-        //[OperationContract(IsOneWay = true, IsInitiating = false)]
-        //void UnSubscribeLevel1(Security security);
-
         [OperationContract(IsOneWay = true, IsInitiating = false)]
         void GetHistoricalCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
 
@@ -32,9 +26,6 @@ namespace QService
 
         [OperationContract(IsOneWay = true, IsInitiating = false)]
         void UnSubscribeMarketData(Security security, MarketDataTypes marketDataTypes);
-
-        //[OperationContract(IsOneWay = true, IsInitiating = false)]
-        //void SubscribeCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame);
     }
 
     public interface IDataFeedCallback
@@ -46,13 +37,13 @@ namespace QService
         void NewLevel1Values(Security security, IEnumerable<KeyValuePair<Level1, object>> changes);
 
         [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
+        void NewLevel2Values(Security security, IEnumerable<Level2> changes);
+
+        [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
         void NewCandles(IEnumerable<Candle> candles);
        
         [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
         void OnError(FaultException exception);
-
-        [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
-        void NewMarketData(Security security, IEnumerable<KeyValuePair<MarketDataTypes, object>> changes);
 
         [OperationContract(IsOneWay = true, ProtectionLevel = System.Net.Security.ProtectionLevel.None)]
         void NewNews(News news);

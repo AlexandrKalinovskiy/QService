@@ -10,7 +10,6 @@ using static QService.Concrete.Connectors;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.EntityFramework;
-using System.Threading;
 using StockSharp.Messages;
 using static QService.Support;
 
@@ -51,7 +50,7 @@ namespace QService
 
             _connector = GetAvialableConnector();
             _connector.ValuesChanged += Level1Changed;
-            _connector.MarketDepthsChanged += MarketDepthsChanged;
+            _connector.MarketDepthsChanged += Level2Changed;
             _connector.NewNews += NewNews;
             _connector.Error += Error;
 
@@ -111,7 +110,9 @@ namespace QService
                 }
 
                 if (operationContext.Channel.State == CommunicationState.Opened)
+                {
                     Callback.NewLevel1Values((Security)security, listChanges);
+                }
             }
         }
 
@@ -251,25 +252,41 @@ namespace QService
         /// <param name="marketDataTypes"></param>
         public void SubscribeMarketData(Security security, Entities.MarketDataTypes marketDataTypes)
         {
-            FaultException result = null;
-            switch (marketDataTypes)
+            if (security == null)
             {
-                case Entities.MarketDataTypes.Level1:
-                    result = SubscribeLevel1(_connector, security, _roles);     //Подписываемся на получение Level1.
-                    if (result != null)  
-                        Callback.OnError(result);
-                    break;
-                case Entities.MarketDataTypes.News:
-                    SubscribeNews(_connector, security);                            //Подписываемся на новости.
-                    break;
-                case Entities.MarketDataTypes.MarketDepth:
-                    result = SubscribeMarketDepth(_connector, security, _roles);             //Подписываемся на стакан.
-                    if (result != null)
-                        Callback.OnError(result);
-                    break;
-                default:
-                    break;
-            }       
+                Callback.OnError(new FaultException("Значение инструмента не может быть неопределенным.")); //Если объект инструмента не создан
+            }
+            else {
+                FaultException result = null;
+
+                var criteria = _context.Securities.Where(s => s.Ticker == security.Ticker).FirstOrDefault();
+
+                if (criteria != null)
+                {
+                    switch (marketDataTypes)
+                    {
+                        case Entities.MarketDataTypes.Level1:
+                            result = SubscribeLevel1(_connector, criteria, _roles);     //Подписываемся на получение Level1.
+                            if (result != null)
+                                Callback.OnError(result);
+                            break;
+                        case Entities.MarketDataTypes.News:
+                            SubscribeNews(_connector, criteria);                            //Подписываемся на новости.
+                            break;
+                        case Entities.MarketDataTypes.Level2:
+                            result = SubscribeLevel2(_connector, criteria, _roles);             //Подписываемся на стакан.
+                            if (result != null)
+                                Callback.OnError(result);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                else
+                {
+                    Callback.OnError(new FaultException("Инструмент не найден."));  //Если объект инструмента создан, но такого инструмента нет в базе.
+                }
+            }    
         }
 
         public void UnSubscribeMarketData(Security security, Entities.MarketDataTypes marketDataTypes)
@@ -282,43 +299,23 @@ namespace QService
                 case Entities.MarketDataTypes.News:
                     UnSubscribeNews(_connector, security);
                     break;
-                case Entities.MarketDataTypes.MarketDepth:
-                    UnSubscribeMarketDepth(_connector, security);
+                case Entities.MarketDataTypes.Level2:
+                    UnSubscribeLevel2(_connector, security);
                     break;
             }
             _connector.UnSubscribeMarketData((StockSharp.BusinessEntities.Security)security, (StockSharp.Messages.MarketDataTypes)marketDataTypes);
         }
 
-        //public void SubscribeCandles(Security security, DateTime from, DateTime to, TimeSpan timeFrame)
-        //{
-        //    var criteria = new StockSharp.BusinessEntities.Security
-        //    {
-        //        Code = security.Ticker,
-        //        Id = security.Code,
-        //        Board = StockSharp.BusinessEntities.ExchangeBoard.Nyse
-        //    };
-
-        //    var candleSeries = new CandleSeries
-        //    {
-        //        Arg = timeFrame,
-        //        CandleType = typeof(TimeFrameCandle),
-        //        From = from,
-        //        To = to,
-        //        Security = criteria
-        //    };
-
-        //    _connector.SubscribeCandles(candleSeries, from, to);
-        //}
-
-        //Callback for SubscribeMarketData -> MarketDepth
-
-        private void MarketDepthsChanged(IEnumerable<StockSharp.BusinessEntities.MarketDepth> marketDepth)
+        //Callback for SubscribeMarketData -> Level2
+        private void Level2Changed(IEnumerable<StockSharp.BusinessEntities.MarketDepth> marketDepths)
         {
-            Console.WriteLine("MarketDepth {0}", marketDepth.FirstOrDefault().BestAsk);
-            List<KeyValuePair<Entities.MarketDataTypes, object>> listMarketDepth = new List<KeyValuePair<Entities.MarketDataTypes, object>>();
-            var kV = new KeyValuePair<Entities.MarketDataTypes, object>(Entities.MarketDataTypes.News, marketDepth);
-            listMarketDepth.Add(kV);
-            //Callback.NewMarketData((Security)marketDepth.FirstOrDefault().Security, listMarketDepth);
+            Console.WriteLine("MarketDepth {0}", marketDepths.FirstOrDefault().BestAsk);
+            var listMarketDepths = new List<Level2>();
+            foreach (var marketDepth in marketDepths)
+            {
+                listMarketDepths.Add((Level2)marketDepth);             
+            }
+            Callback.NewLevel2Values((Security)marketDepths.FirstOrDefault().Security, listMarketDepths);
         }
 
         //Callback for SubscribeMarketData -> NewNews
